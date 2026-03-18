@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.local
+venv/
+
+# TikTok engine (heavy files)
+tiktok-engine/images/
+tiktok-engine/videos/
+tiktok-engine/output/
+tiktok-engine/frames*/
+tiktok-engine/*.png
