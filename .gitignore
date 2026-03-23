@@ -4,9 +4,8 @@ dist/
 .env.local
 venv/
 
-# TikTok engine (heavy files)
-tiktok-engine/images/
-tiktok-engine/videos/
+# TikTok engine
 tiktok-engine/output/
 tiktok-engine/frames*/
 tiktok-engine/*.png
+tiktok-engine/.cache/
