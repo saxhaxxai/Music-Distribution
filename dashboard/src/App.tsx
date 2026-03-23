@@ -39,6 +39,7 @@ function AppRoutes() {
 
       <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={isAdmin ? <Navigate to="/admin" /> : <CreatorDashboard />} />
+        <Route path="/dashboard/generate" element={<GeneratePost />} />
         <Route path="/admin" element={<AdminRoute><AdminOverview /></AdminRoute>} />
         <Route path="/admin/creators" element={<AdminRoute><CreatorsList /></AdminRoute>} />
         <Route path="/admin/generate" element={<AdminRoute><GeneratePost /></AdminRoute>} />

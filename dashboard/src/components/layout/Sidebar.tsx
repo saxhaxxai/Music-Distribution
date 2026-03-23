@@ -12,6 +12,7 @@ import {
 
 const creatorLinks = [
   { to: '/dashboard', label: 'Overview', icon: LayoutDashboard },
+  { to: '/dashboard/generate', label: 'Generate Post', icon: Video },
   { to: '/dashboard/submit', label: 'Submit Post', icon: Send },
 ]
 
