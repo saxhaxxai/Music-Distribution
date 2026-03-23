@@ -19,10 +19,10 @@ const CATEGORIES = [
     description: 'Dolce Vita, Capri, Napoli',
     image: 'https://images.unsplash.com/photo-1515859005217-8a1f08870f59?w=400&h=250&fit=crop',
     subcategories: [
-      { value: 'bleu', label: 'Blue', gradient: 'from-sky-400 via-blue-500 to-indigo-600', description: 'Sea, Capri, Navy outfits, Vespa', icon: '\u{1F30A}' },
-      { value: 'vert', label: 'Green', gradient: 'from-lime-400 via-emerald-500 to-teal-600', description: 'Gardens, Lemon trees, Terraces', icon: '\u{1F33F}' },
-      { value: 'orange', label: 'Orange', gradient: 'from-amber-400 via-orange-500 to-red-500', description: 'Sunset, Aperol, Golden hour', icon: '\u{1F305}' },
-      { value: 'jaune', label: 'Yellow', gradient: 'from-yellow-300 via-amber-400 to-orange-400', description: 'Lemons, Positano, Limoncello', icon: '\u{1F34B}' },
+      { value: 'bleu', label: 'Blue', gradient: 'from-sky-400 via-blue-500 to-indigo-600', description: 'Sea, Capri, Navy outfits, Vespa', icon: '\u{1F30A}', disabled: false },
+      { value: 'vert', label: 'Green', gradient: 'from-lime-400 via-emerald-500 to-teal-600', description: 'Gardens, Lemon trees, Terraces', icon: '\u{1F33F}', disabled: false },
+      { value: 'orange', label: 'Orange', gradient: 'from-amber-400 via-orange-500 to-red-500', description: 'Sunset, Aperol, Golden hour', icon: '\u{1F305}', disabled: false },
+      { value: 'jaune', label: 'Yellow', gradient: 'from-yellow-300 via-amber-400 to-orange-400', description: 'Lemons, Positano, Limoncello', icon: '\u{1F34B}', disabled: false },
     ],
   },
   {
@@ -31,10 +31,10 @@ const CATEGORIES = [
     description: 'Club, Night, House Music',
     image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=400&h=250&fit=crop',
     subcategories: [
-      { value: 'black_white', label: 'Black & White', gradient: 'from-gray-600 via-gray-800 to-black', description: 'Club, DJ sets, Crowd, Night', icon: '\u{1F5A4}' },
-      { value: 'night_club', label: 'Night Club', gradient: 'from-purple-500 via-pink-500 to-red-500', description: 'Neon, Lasers, Dark, Rave', icon: '\u{1F303}' },
-      { value: 'day_club', label: 'Day Club', gradient: 'from-amber-400 via-orange-400 to-pink-500', description: 'Pool party, Rooftop, Ibiza', icon: '\u{2600}\u{FE0F}' },
-      { value: 'vhs', label: 'VHS', gradient: 'from-cyan-400 via-blue-500 to-purple-600', description: 'Retro, Glitch, Analog', icon: '\u{1F4FC}' },
+      { value: 'black_white', label: 'Black & White', gradient: 'from-gray-600 via-gray-800 to-black', description: 'Club, DJ sets, Crowd, Night', icon: '\u{1F5A4}', disabled: false },
+      { value: 'night_club', label: 'Night Club', gradient: 'from-purple-500 via-pink-500 to-red-500', description: 'Neon, Lasers, Dark, Rave', icon: '\u{1F303}', disabled: false },
+      { value: 'day_club', label: 'Day Club', gradient: 'from-amber-400 via-orange-400 to-pink-500', description: 'Pool party, Rooftop, Ibiza', icon: '\u{2600}\u{FE0F}', disabled: false },
+      { value: 'vhs', label: 'VHS', gradient: 'from-cyan-400 via-blue-500 to-purple-600', description: 'Retro, Glitch, Analog', icon: '\u{1F4FC}', disabled: false },
     ],
   },
   {
