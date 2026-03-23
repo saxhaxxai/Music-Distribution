@@ -11,7 +11,7 @@ import type { Post, Account } from '@/types'
 export function CreatorDashboard() {
   const { user } = useAuth()
   const [posts, setPosts] = useState<Post[]>([])
-  const [accounts, setAccounts] = useState<Account[]>([])
+  const [, setAccounts] = useState<Account[]>([])
   const [showSubmit, setShowSubmit] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -90,9 +90,8 @@ export function CreatorDashboard() {
         <PostsTable posts={posts} />
       </div>
 
-      {showSubmit && accounts[0] && (
+      {showSubmit && (
         <SubmitPostModal
-          accountId={accounts[0].id}
           onClose={() => setShowSubmit(false)}
           onSubmitted={fetchData}
         />
