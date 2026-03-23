@@ -39,7 +39,7 @@ export function PostsTable({ posts }: Props) {
         <thead>
           <tr className="border-b border-gray-100 text-left text-sm text-gray-500">
             <th className="px-6 py-3 font-medium">Post</th>
-            <th className="px-6 py-3 font-medium">Platform</th>
+            <th className="px-6 py-3 font-medium">Type</th>
             <th className="px-6 py-3 font-medium">Status</th>
             <th className="px-6 py-3 font-medium">Views</th>
             <th className="px-6 py-3 font-medium">Likes</th>
@@ -64,7 +64,9 @@ export function PostsTable({ posts }: Props) {
                   </a>
                 </td>
                 <td className="px-6 py-4">
-                  <span className="text-sm capitalize">{post.platform}</span>
+                  <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full font-medium">
+                    {(post as unknown as { content_type?: string }).content_type || 'other'}
+                  </span>
                 </td>
                 <td className="px-6 py-4">
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[post.status]}`}>

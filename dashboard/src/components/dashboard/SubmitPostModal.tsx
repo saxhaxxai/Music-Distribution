@@ -22,6 +22,18 @@ function extractPostId(url: string, platform: string): string | null {
   return null
 }
 
+const POST_TYPES = [
+  { value: 'italy_blue', label: 'Italy — Blue', category: 'italy', color: 'bg-blue-500' },
+  { value: 'italy_green', label: 'Italy — Green', category: 'italy', color: 'bg-emerald-500' },
+  { value: 'italy_orange', label: 'Italy — Orange', category: 'italy', color: 'bg-orange-500' },
+  { value: 'italy_yellow', label: 'Italy — Yellow', category: 'italy', color: 'bg-yellow-400' },
+  { value: 'party_bw', label: 'Party — Black & White', category: 'party', color: 'bg-gray-800' },
+  { value: 'party_night', label: 'Party — Night Club', category: 'party', color: 'bg-purple-500' },
+  { value: 'party_day', label: 'Party — Day Club', category: 'party', color: 'bg-amber-400' },
+  { value: 'party_vhs', label: 'Party — VHS', category: 'party', color: 'bg-cyan-500' },
+  { value: 'other', label: 'Other', category: 'other', color: 'bg-gray-400' },
+]
+
 interface Props {
   onClose: () => void
   onSubmitted: () => void
@@ -30,6 +42,7 @@ interface Props {
 export function SubmitPostModal({ onClose, onSubmitted }: Props) {
   const { user } = useAuth()
   const [url, setUrl] = useState('')
+  const [contentType, setContentType] = useState('')
   const [accounts, setAccounts] = useState<Account[]>([])
   const [selectedAccount, setSelectedAccount] = useState<string>('')
   const [newHandle, setNewHandle] = useState('')
@@ -83,6 +96,11 @@ export function SubmitPostModal({ onClose, onSubmitted }: Props) {
       return
     }
 
+    if (!contentType) {
+      setError('Please select a post type.')
+      return
+    }
+
     const platform = detectPlatform(url)
     if (!platform) {
       setError('URL not supported. Use a TikTok or Instagram link.')
@@ -103,6 +121,7 @@ export function SubmitPostModal({ onClose, onSubmitted }: Props) {
       account_id: selectedAccount,
       submitted_by: user?.id,
       status: 'pending',
+      content_type: contentType,
       published_at: new Date().toISOString(),
     })
 
@@ -118,7 +137,7 @@ export function SubmitPostModal({ onClose, onSubmitted }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md">
+      <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold">Submit a Post</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -174,6 +193,30 @@ export function SubmitPostModal({ onClose, onSubmitted }: Props) {
             )}
           </div>
 
+          {/* Post Type */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Post Type
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {POST_TYPES.map((type) => (
+                <button
+                  key={type.value}
+                  type="button"
+                  onClick={() => setContentType(type.value)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-left text-sm transition-all ${
+                    contentType === type.value
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <div className={`w-3 h-3 rounded-full ${type.color}`} />
+                  <span className="font-medium text-gray-700">{type.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Post URL */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -200,7 +243,7 @@ export function SubmitPostModal({ onClose, onSubmitted }: Props) {
 
           <button
             type="submit"
-            disabled={loading || !selectedAccount}
+            disabled={loading || !selectedAccount || !contentType}
             className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
             {loading ? 'Submitting...' : 'Submit Post'}
