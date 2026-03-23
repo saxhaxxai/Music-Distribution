@@ -28,6 +28,12 @@ export function AdminOverview() {
     return sum + (latest?.views || 0)
   }, 0)
 
+  const totalLikes = posts.reduce((sum, post) => {
+    const latest = post.analytics
+      ?.sort((a, b) => new Date(b.fetched_at).getTime() - new Date(a.fetched_at).getTime())[0]
+    return sum + (latest?.likes || 0)
+  }, 0)
+
   const activeCreators = new Set(posts.map((p) => p.submitted_by)).size
 
   const avgEngagement = posts.reduce((sum, post) => {
@@ -47,6 +53,7 @@ export function AdminOverview() {
 
       <StatsGrid
         totalViews={totalViews}
+        totalLikes={totalLikes}
         totalPosts={posts.length}
         activeCreators={activeCreators}
         avgEngagement={avgEngagement}

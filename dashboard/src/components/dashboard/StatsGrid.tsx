@@ -1,4 +1,4 @@
-import { Eye, FileVideo, TrendingUp, Users } from 'lucide-react'
+import { Eye, FileVideo, TrendingUp, Users, Heart } from 'lucide-react'
 
 interface StatCardProps {
   label: string
@@ -26,13 +26,14 @@ function StatCard({ label, value, change, icon }: StatCardProps) {
 
 interface StatsGridProps {
   totalViews: number
+  totalLikes: number
   totalPosts: number
   activeCreators?: number
   avgEngagement?: number
   isAdmin?: boolean
 }
 
-export function StatsGrid({ totalViews, totalPosts, activeCreators, avgEngagement, isAdmin }: StatsGridProps) {
+export function StatsGrid({ totalViews, totalLikes, totalPosts, activeCreators, avgEngagement, isAdmin }: StatsGridProps) {
   const formatNumber = (n: number) => {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
     if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
@@ -40,11 +41,16 @@ export function StatsGrid({ totalViews, totalPosts, activeCreators, avgEngagemen
   }
 
   return (
-    <div className={`grid gap-4 ${isAdmin ? 'grid-cols-4' : 'grid-cols-3'}`}>
+    <div className={`grid gap-4 ${isAdmin ? 'grid-cols-5' : 'grid-cols-4'}`}>
       <StatCard
         label="Total Views"
         value={formatNumber(totalViews)}
         icon={<Eye className="w-5 h-5" />}
+      />
+      <StatCard
+        label="Total Likes"
+        value={formatNumber(totalLikes)}
+        icon={<Heart className="w-5 h-5" />}
       />
       <StatCard
         label="Total Posts"

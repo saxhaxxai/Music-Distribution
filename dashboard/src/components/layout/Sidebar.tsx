@@ -7,6 +7,7 @@ import {
   BarChart3,
   LogOut,
   Music,
+  Video,
 } from 'lucide-react'
 
 const creatorLinks = [
@@ -16,6 +17,7 @@ const creatorLinks = [
 
 const adminLinks = [
   { to: '/admin', label: 'Overview', icon: LayoutDashboard },
+  { to: '/admin/generate', label: 'Generate Post', icon: Video },
   { to: '/admin/creators', label: 'Creators', icon: Users },
   { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
 ]
