@@ -24,7 +24,7 @@ app = FastAPI(title="TikTok Generator API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "https://music-distribution-luca.vercel.app"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
