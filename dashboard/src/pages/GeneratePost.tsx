@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Download, Loader2, Play, RefreshCw, Sparkles, ChevronLeft, Music, Zap, Copy, Hash, Type } from 'lucide-react'
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
 interface Track {
   filename: string
   name: string
@@ -76,7 +78,7 @@ export function GeneratePost() {
   useEffect(() => {
     if (!subcategory) return
     setTracksLoading(true)
-    fetch('http://localhost:8000/tracks')
+    fetch(`${API_URL}/tracks`)
       .then(r => r.json())
       .then((data: Track[]) => {
         setTracks(data.filter(t => !t.error))
@@ -97,7 +99,7 @@ export function GeneratePost() {
     try {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 30000) // 30s timeout
-      const res = await fetch('http://localhost:8000/generate', {
+      const res = await fetch(`${API_URL}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ category, color: subcategory, track: selectedTrack }),
@@ -125,7 +127,7 @@ export function GeneratePost() {
     setCaptionLoading(true)
     try {
       const trackName = tracks.find(t => t.filename === selectedTrack)?.name || ''
-      const res = await fetch('http://localhost:8000/caption', {
+      const res = await fetch(`${API_URL}/caption`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ category, color: subcategory, track_name: trackName }),
