@@ -8,6 +8,7 @@ export function Signup() {
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [tiktokHandle, setTiktokHandle] = useState('')
+  const [instaHandle, setInstaHandle] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
@@ -17,7 +18,6 @@ export function Signup() {
     setError('')
     setLoading(true)
 
-    // 1. Create auth user
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -36,7 +36,6 @@ export function Signup() {
       return
     }
 
-    // 2. Create user profile
     const { error: profileError } = await supabase.from('users').insert({
       id: userId,
       email,
@@ -50,13 +49,25 @@ export function Signup() {
       return
     }
 
-    // 3. Link TikTok account
-    const handle = tiktokHandle.startsWith('@') ? tiktokHandle : `@${tiktokHandle}`
-    await supabase.from('accounts').insert({
-      user_id: userId,
-      platform: 'tiktok',
-      handle,
-    })
+    // Link TikTok
+    if (tiktokHandle) {
+      const handle = tiktokHandle.startsWith('@') ? tiktokHandle : `@${tiktokHandle}`
+      await supabase.from('accounts').insert({
+        user_id: userId,
+        platform: 'tiktok',
+        handle,
+      })
+    }
+
+    // Link Instagram
+    if (instaHandle) {
+      const handle = instaHandle.startsWith('@') ? instaHandle : `@${instaHandle}`
+      await supabase.from('accounts').insert({
+        user_id: userId,
+        platform: 'instagram',
+        handle,
+      })
+    }
 
     setLoading(false)
     navigate('/dashboard')
@@ -113,9 +124,18 @@ export function Signup() {
               type="text"
               value={tiktokHandle}
               onChange={(e) => setTiktokHandle(e.target.value)}
-              placeholder="@your_handle"
+              placeholder="@your_tiktok"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Instagram Handle</label>
+            <input
+              type="text"
+              value={instaHandle}
+              onChange={(e) => setInstaHandle(e.target.value)}
+              placeholder="@your_instagram"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 

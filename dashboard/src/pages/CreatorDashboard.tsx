@@ -6,58 +6,55 @@ import { PostsTable } from '@/components/dashboard/PostsTable'
 import { ViewsChart } from '@/components/dashboard/ViewsChart'
 import { SubmitPostModal } from '@/components/dashboard/SubmitPostModal'
 import { Plus } from 'lucide-react'
-import type { Post, Account } from '@/types'
+import type { Post } from '@/types'
 
 export function CreatorDashboard() {
   const { user } = useAuth()
   const [posts, setPosts] = useState<Post[]>([])
-  const [, setAccounts] = useState<Account[]>([])
   const [showSubmit, setShowSubmit] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [platformFilter, setPlatformFilter] = useState<string>('all')
 
   async function fetchData() {
     if (!user) return
 
-    const [postsRes, accountsRes] = await Promise.all([
-      supabase
-        .from('posts')
-        .select('*, analytics(*)')
-        .eq('submitted_by', user.id)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('accounts')
-        .select('*')
-        .eq('user_id', user.id),
-    ])
+    const { data } = await supabase
+      .from('posts')
+      .select('*, analytics(*)')
+      .eq('submitted_by', user.id)
+      .order('created_at', { ascending: false })
 
-    setPosts(postsRes.data || [])
-    setAccounts(accountsRes.data || [])
+    setPosts(data || [])
     setLoading(false)
   }
 
   useEffect(() => { fetchData() }, [user])
 
-  // Calculate stats from posts
-  const totalViews = posts.reduce((sum, post) => {
+  // Filter posts by platform
+  const filteredPosts = platformFilter === 'all'
+    ? posts
+    : posts.filter(p => p.platform === platformFilter)
+
+  // Calculate stats from filtered posts
+  const totalViews = filteredPosts.reduce((sum, post) => {
     const latest = post.analytics
       ?.sort((a, b) => new Date(b.fetched_at).getTime() - new Date(a.fetched_at).getTime())[0]
     return sum + (latest?.views || 0)
   }, 0)
 
-  const totalLikes = posts.reduce((sum, post) => {
+  const totalLikes = filteredPosts.reduce((sum, post) => {
     const latest = post.analytics
       ?.sort((a, b) => new Date(b.fetched_at).getTime() - new Date(a.fetched_at).getTime())[0]
     return sum + (latest?.likes || 0)
   }, 0)
 
-  const avgEngagement = posts.reduce((sum, post) => {
+  const avgEngagement = filteredPosts.reduce((sum, post) => {
     const latest = post.analytics
       ?.sort((a, b) => new Date(b.fetched_at).getTime() - new Date(a.fetched_at).getTime())[0]
     return sum + (latest?.engagement_rate || 0)
-  }, 0) / (posts.length || 1)
+  }, 0) / (filteredPosts.length || 1)
 
-  // Build chart data from analytics
-  const chartData = buildChartData(posts)
+  const chartData = buildChartData(filteredPosts)
 
   if (loading) {
     return <div className="text-gray-400">Loading...</div>
@@ -76,10 +73,27 @@ export function CreatorDashboard() {
         </button>
       </div>
 
+      {/* Platform filter */}
+      <div className="flex items-center gap-2">
+        {['all', 'tiktok', 'instagram'].map((p) => (
+          <button
+            key={p}
+            onClick={() => setPlatformFilter(p)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              platformFilter === p
+                ? 'bg-blue-600 text-white'
+                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            {p === 'all' ? 'All Platforms' : p === 'tiktok' ? 'TikTok' : 'Instagram'}
+          </button>
+        ))}
+      </div>
+
       <StatsGrid
         totalViews={totalViews}
         totalLikes={totalLikes}
-        totalPosts={posts.length}
+        totalPosts={filteredPosts.length}
         avgEngagement={avgEngagement}
       />
 
@@ -87,7 +101,7 @@ export function CreatorDashboard() {
 
       <div>
         <h2 className="text-lg font-bold text-gray-900 mb-4">Your Posts</h2>
-        <PostsTable posts={posts} />
+        <PostsTable posts={filteredPosts} />
       </div>
 
       {showSubmit && (
