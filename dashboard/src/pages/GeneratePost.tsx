@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Download, Loader2, Play, RefreshCw, Sparkles, ChevronLeft, Music, Zap, Copy, Hash, Type } from 'lucide-react'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_API_URL || 'https://music-distribution-production.up.railway.app'
 
 interface Track {
   filename: string
