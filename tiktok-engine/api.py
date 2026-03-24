@@ -681,7 +681,7 @@ async def fetch_stats(req: FetchStatsRequest):
     """
     import httpx
 
-    token = os.environ.get("APIFY_TOKEN")
+    token = (os.environ.get("APIFY_TOKEN") or "").strip()
     if not token:
         raise HTTPException(status_code=500, detail="APIFY_TOKEN not configured")
 
