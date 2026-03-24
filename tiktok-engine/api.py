@@ -667,7 +667,7 @@ async def generate_caption(req: CaptionRequest):
     }
 
 
-# ─── ANALYTICS TRACKING ──────────────────────────────────────────
+# ─── ANALYTICS TRACKING (Apify) ──────────────────────────────────
 
 class FetchStatsRequest(BaseModel):
     url: str
@@ -676,60 +676,51 @@ class FetchStatsRequest(BaseModel):
 @app.post("/fetch-stats")
 async def fetch_stats(req: FetchStatsRequest):
     """
-    Fetch view/like/comment counts for a TikTok or Instagram post URL.
-    Uses yt-dlp to extract public stats without auth.
+    Fetch TikTok post metrics via Apify clockworks/tiktok-scraper.
+    APIFY_TOKEN must be set as an environment variable.
     """
-    import asyncio
-    loop = asyncio.get_event_loop()
+    import httpx
 
-    def _fetch():
-        try:
-            result = subprocess.run(
-                [
-                    "yt-dlp",
-                    "--no-download",
-                    "--print", "%(view_count)s|%(like_count)s|%(comment_count)s|%(repost_count)s",
-                    "--no-warnings",
-                    "--quiet",
-                    req.url,
-                ],
-                capture_output=True, text=True, timeout=30
-            )
-            if result.returncode != 0 or not result.stdout.strip():
-                return None
+    token = os.environ.get("APIFY_TOKEN")
+    if not token:
+        raise HTTPException(status_code=500, detail="APIFY_TOKEN not configured")
 
-            parts = result.stdout.strip().split("|")
-            def safe_int(v: str) -> int:
-                try:
-                    return int(v) if v and v != "None" else 0
-                except Exception:
-                    return 0
+    apify_url = f"https://api.apify.com/v2/acts/clockworks~tiktok-scraper/run-sync-get-dataset-items?token={token}"
 
-            views    = safe_int(parts[0] if len(parts) > 0 else "0")
-            likes    = safe_int(parts[1] if len(parts) > 1 else "0")
-            comments = safe_int(parts[2] if len(parts) > 2 else "0")
-            shares   = safe_int(parts[3] if len(parts) > 3 else "0")
+    payload = {
+        "postURLs": [req.url],
+        "resultsType": "posts",
+        "maxItems": 1,
+        "shouldDownloadVideos": False,
+        "shouldDownloadCovers": False,
+    }
 
-            engagement = round((likes + comments + shares) / views * 100, 2) if views > 0 else 0.0
+    async with httpx.AsyncClient(timeout=120) as client:
+        resp = await client.post(apify_url, json=payload)
 
-            return {
-                "views": views,
-                "likes": likes,
-                "comments": comments,
-                "shares": shares,
-                "bookmarks": 0,
-                "engagement_rate": engagement,
-            }
-        except subprocess.TimeoutExpired:
-            return None
-        except Exception:
-            return None
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Apify error: {resp.text[:200]}")
 
-    stats = await loop.run_in_executor(None, _fetch)
-    if stats is None:
-        raise HTTPException(status_code=422, detail="Could not fetch stats for this URL. The post may be private or the platform blocked access.")
+    items = resp.json()
+    if not items:
+        raise HTTPException(status_code=422, detail="No data returned — post may be private or URL invalid")
 
-    return stats
+    item = items[0]
+    views    = item.get("playCount", 0) or 0
+    likes    = item.get("diggCount", 0) or 0
+    comments = item.get("commentCount", 0) or 0
+    shares   = item.get("shareCount", 0) or 0
+    bookmarks = item.get("collectCount", 0) or 0
+    engagement = round((likes + comments + shares) / views * 100, 2) if views > 0 else 0.0
+
+    return {
+        "views": views,
+        "likes": likes,
+        "comments": comments,
+        "shares": shares,
+        "bookmarks": bookmarks,
+        "engagement_rate": engagement,
+    }
 
 
 if __name__ == "__main__":
