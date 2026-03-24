@@ -325,7 +325,7 @@ def generate_mixed_ffmpeg(
     random.shuffle(image_paths)
 
     # ── Define the 3 video clip durations ─────────────────────────
-    vid_durs = [random.uniform(2.0, 3.0) for _ in range(3)]
+    vid_durs = [random.uniform(1.2, 1.8), random.uniform(2.0, 3.0), random.uniform(2.0, 3.0)]
     total_vid = sum(vid_durs)
 
     # Remaining time split evenly for 4 photo groups
