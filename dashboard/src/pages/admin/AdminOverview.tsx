@@ -3,7 +3,8 @@ import { supabase } from '@/lib/supabase'
 import { StatsGrid } from '@/components/dashboard/StatsGrid'
 import { ViewsChart } from '@/components/dashboard/ViewsChart'
 import { PostsTable } from '@/components/dashboard/PostsTable'
-import { RefreshCw } from 'lucide-react'
+import { SubmitPostModal } from '@/components/dashboard/SubmitPostModal'
+import { RefreshCw, Plus } from 'lucide-react'
 import type { Post } from '@/types'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://music-distribution-production.up.railway.app'
@@ -12,6 +13,7 @@ export function AdminOverview() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshingAll, setRefreshingAll] = useState(false)
+  const [showSubmit, setShowSubmit] = useState(false)
 
   const fetchPosts = useCallback(async () => {
     const { data } = await supabase
@@ -83,14 +85,23 @@ export function AdminOverview() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Admin Overview</h1>
-        <button
-          onClick={refreshAll}
-          disabled={refreshingAll}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 ${refreshingAll ? 'animate-spin' : ''}`} />
-          {refreshingAll ? 'Refreshing...' : 'Refresh All Stats'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowSubmit(true)}
+            className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700"
+          >
+            <Plus className="w-4 h-4" />
+            Submit Post
+          </button>
+          <button
+            onClick={refreshAll}
+            disabled={refreshingAll}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshingAll ? 'animate-spin' : ''}`} />
+            {refreshingAll ? 'Refreshing...' : 'Refresh All Stats'}
+          </button>
+        </div>
       </div>
 
       <StatsGrid
@@ -117,6 +128,13 @@ export function AdminOverview() {
         <h2 className="text-lg font-bold text-gray-900 mb-4">All Posts</h2>
         <PostsTable posts={posts} onRefreshed={fetchPosts} isAdmin />
       </div>
+
+      {showSubmit && (
+        <SubmitPostModal
+          onClose={() => setShowSubmit(false)}
+          onSubmitted={fetchPosts}
+        />
+      )}
     </div>
   )
 }
