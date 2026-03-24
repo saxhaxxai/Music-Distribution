@@ -344,58 +344,57 @@ def generate_mixed_ffmpeg(
 
     video_only = len(image_paths) == 0  # VHS mode: no photos
 
-    # ── Define the 3 video clip durations ─────────────────────────
     if video_only:
-        # Fill entire clip with video clips (~3-5s each)
-        vid_durs = []
-        t = 0.0
-        while t < clip_dur - 1.0:
-            d = min(random.uniform(2.5, 4.0), clip_dur - t)
-            vid_durs.append(d)
-            t += d
-        total_vid = sum(vid_durs)
+        # ── VHS mode: fast random clips from different videos ─────
+        # Each clip is short (0.5-1.5s), picked from a random position
+        # in a random video — creates a fast-cut montage effect
+        segments = []
+        t_cursor = 0.0
+        vid_idx = 0
+        while t_cursor < clip_dur - 0.1:
+            v = videos[vid_idx % len(videos)]
+            vid_idx += 1
+            v_total = get_video_duration(v)
+            dur = min(random.uniform(0.5, 1.5), clip_dur - t_cursor)
+            if dur < 0.2:
+                break
+            max_start = max(0.0, v_total - dur - 0.1)
+            start = random.uniform(0.0, max_start) if max_start > 0 else 0.0
+            segments.append(('video_at', v, dur, start))
+            t_cursor += dur
     else:
+        segments = []
+        photo_idx = 0
+        t_cursor  = 0.0
         vid_durs = [random.uniform(1.2, 1.8), random.uniform(2.0, 3.0), random.uniform(2.0, 3.0)]
         total_vid = sum(vid_durs)
 
-    # ── Pick video sources — reuse same video if long enough ──────
-    vid_sources = []
-    for vd in vid_durs:
-        chosen = None
-        for v in videos:
-            v_total = get_video_duration(v)
-            already_used = sum(vd2 for v2, vd2 in vid_sources if v2 == v)
-            if v_total - already_used >= vd + 1.0:
-                chosen = v
-                break
-        if chosen is None:
-            chosen = videos[len(vid_sources) % len(videos)]
-        vid_sources.append((chosen, vd))
+        # ── Pick video sources — reuse same video if long enough ──
+        vid_sources = []
+        for vd in vid_durs:
+            chosen = None
+            for v in videos:
+                v_total = get_video_duration(v)
+                already_used = sum(vd2 for v2, vd2 in vid_sources if v2 == v)
+                if v_total - already_used >= vd + 1.0:
+                    chosen = v
+                    break
+            if chosen is None:
+                chosen = videos[len(vid_sources) % len(videos)]
+            vid_sources.append((chosen, vd))
 
-    # ── Playhead per video: continue from where we left off ───────
-    vid_playhead: dict[str, float] = {}
+        # ── Playhead per video: continue from where we left off ───
+        vid_playhead: dict[str, float] = {}
 
-    def pick_clip_start(vid_path: str, dur: float) -> float:
-        total = get_video_duration(vid_path)
-        if vid_path not in vid_playhead:
-            total_needed = sum(vd for v, vd in vid_sources if v == vid_path)
-            max_s = max(0.0, total - total_needed - 0.3)
-            vid_playhead[vid_path] = random.uniform(0.1, max_s) if max_s > 0.1 else 0.0
-        start = min(vid_playhead[vid_path], max(0.0, total - dur - 0.1))
-        vid_playhead[vid_path] = start + dur
-        return start
-
-    segments = []
-    photo_idx = 0
-    t_cursor  = 0.0
-
-    if video_only:
-        # VHS: pure video clip sequence
-        for v, vd in vid_sources:
-            clip_s = pick_clip_start(v, vd)
-            segments.append(('video_at', v, vd, clip_s))
-            t_cursor += vd
-    else:
+        def pick_clip_start(vid_path: str, dur: float) -> float:
+            total = get_video_duration(vid_path)
+            if vid_path not in vid_playhead:
+                total_needed = sum(vd for v, vd in vid_sources if v == vid_path)
+                max_s = max(0.0, total - total_needed - 0.3)
+                vid_playhead[vid_path] = random.uniform(0.1, max_s) if max_s > 0.1 else 0.0
+            start = min(vid_playhead[vid_path], max(0.0, total - dur - 0.1))
+            vid_playhead[vid_path] = start + dur
+            return start
         # ── Photo group timing ────────────────────────────────────
         total_photo_time = clip_dur - total_vid
         group_times = [
