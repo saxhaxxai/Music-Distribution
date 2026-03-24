@@ -12,8 +12,12 @@ function detectPlatform(url: string): string | null {
 
 function extractPostId(url: string, platform: string): string | null {
   if (platform === 'tiktok') {
-    const match = url.match(/video\/(\d+)/)
-    return match?.[1] || null
+    const longMatch = url.match(/video\/(\d+)/)
+    if (longMatch?.[1]) return longMatch[1]
+    // Short URL: vm.tiktok.com/ZNRxtxu1S/
+    const shortMatch = url.match(/vm\.tiktok\.com\/([A-Za-z0-9]+)/)
+    if (shortMatch?.[1]) return shortMatch[1]
+    return null
   }
   if (platform === 'instagram') {
     const match = url.match(/\/(reel|p)\/([A-Za-z0-9_-]+)/)
