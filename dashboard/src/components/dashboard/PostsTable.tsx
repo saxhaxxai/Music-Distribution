@@ -35,61 +35,65 @@ export function PostsTable({ posts }: Props) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-gray-100 text-left text-sm text-gray-500">
-            <th className="px-6 py-3 font-medium">Post</th>
-            <th className="px-6 py-3 font-medium">Type</th>
-            <th className="px-6 py-3 font-medium">Status</th>
-            <th className="px-6 py-3 font-medium">Views</th>
-            <th className="px-6 py-3 font-medium">Likes</th>
-            <th className="px-6 py-3 font-medium">Engagement</th>
-            <th className="px-6 py-3 font-medium">Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {posts.map((post) => {
-            const stats = getLatestAnalytics(post)
-            return (
-              <tr key={post.id} className="border-b border-gray-50 hover:bg-gray-50">
-                <td className="px-6 py-4">
-                  <a
-                    href={post.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    {post.platform_post_id?.slice(0, 12)}...
-                  </a>
-                </td>
-                <td className="px-6 py-4">
-                  <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full font-medium">
-                    {(post as unknown as { content_type?: string }).content_type || 'other'}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[post.status]}`}>
-                    {post.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm font-medium">
-                  {stats ? formatNumber(stats.views) : '-'}
-                </td>
-                <td className="px-6 py-4 text-sm">
-                  {stats ? formatNumber(stats.likes) : '-'}
-                </td>
-                <td className="px-6 py-4 text-sm">
-                  {stats ? `${stats.engagement_rate.toFixed(1)}%` : '-'}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-500">
-                  {new Date(post.created_at).toLocaleDateString()}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[600px]">
+          <thead>
+            <tr className="border-b border-gray-100 text-left text-sm text-gray-500">
+              <th className="px-4 py-3 font-medium sm:px-6">Post</th>
+              <th className="px-4 py-3 font-medium sm:px-6">Type</th>
+              <th className="px-4 py-3 font-medium sm:px-6">Status</th>
+              <th className="px-4 py-3 font-medium sm:px-6">Views</th>
+              <th className="px-4 py-3 font-medium sm:px-6">Likes</th>
+              <th className="hidden sm:table-cell px-6 py-3 font-medium">Engagement</th>
+              <th className="hidden sm:table-cell px-6 py-3 font-medium">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {posts.map((post) => {
+              const stats = getLatestAnalytics(post)
+              return (
+                <tr key={post.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-4 py-3 sm:px-6 sm:py-4">
+                    <a
+                      href={post.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate max-w-[80px] sm:max-w-none">
+                        {post.platform_post_id?.slice(0, 12)}...
+                      </span>
+                    </a>
+                  </td>
+                  <td className="px-4 py-3 sm:px-6 sm:py-4">
+                    <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full font-medium whitespace-nowrap">
+                      {(post as unknown as { content_type?: string }).content_type || 'other'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 sm:px-6 sm:py-4">
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[post.status]}`}>
+                      {post.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm font-medium">
+                    {stats ? formatNumber(stats.views) : '-'}
+                  </td>
+                  <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm">
+                    {stats ? formatNumber(stats.likes) : '-'}
+                  </td>
+                  <td className="hidden sm:table-cell px-6 py-4 text-sm">
+                    {stats ? `${stats.engagement_rate.toFixed(1)}%` : '-'}
+                  </td>
+                  <td className="hidden sm:table-cell px-6 py-4 text-sm text-gray-500">
+                    {new Date(post.created_at).toLocaleDateString()}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

@@ -324,16 +324,26 @@ def generate_mixed_ffmpeg(
     random.shuffle(videos)
     random.shuffle(image_paths)
 
+    video_only = len(image_paths) == 0  # VHS mode: no photos
+
     # ── Define the 3 video clip durations ─────────────────────────
-    vid_durs = [random.uniform(1.2, 1.8), random.uniform(2.0, 3.0), random.uniform(2.0, 3.0)]
-    total_vid = sum(vid_durs)
+    if video_only:
+        # Fill entire clip with video clips (~3-5s each)
+        vid_durs = []
+        t = 0.0
+        while t < clip_dur - 1.0:
+            d = min(random.uniform(2.5, 4.0), clip_dur - t)
+            vid_durs.append(d)
+            t += d
+        total_vid = sum(vid_durs)
+    else:
+        vid_durs = [random.uniform(1.2, 1.8), random.uniform(2.0, 3.0), random.uniform(2.0, 3.0)]
+        total_vid = sum(vid_durs)
 
     # ── Pick video sources — reuse same video if long enough ──────
-    # Check which videos are long enough to supply multiple clips
     vid_sources = []
     for vd in vid_durs:
         chosen = None
-        # Prefer a video already chosen if it has enough remaining footage
         for v in videos:
             v_total = get_video_duration(v)
             already_used = sum(vd2 for v2, vd2 in vid_sources if v2 == v)
@@ -344,68 +354,74 @@ def generate_mixed_ffmpeg(
             chosen = videos[len(vid_sources) % len(videos)]
         vid_sources.append((chosen, vd))
 
-    # ── Photo group timing ────────────────────────────────────────
-    total_photo_time = clip_dur - total_vid
-    group_times = [
-        total_photo_time * 0.20,
-        total_photo_time * 0.27,
-        total_photo_time * 0.27,
-        total_photo_time * 0.26,
-    ]
-
-    def photo_dur(t_in_clip: float) -> float:
-        dist = abs(drop_rel - t_in_clip)
-        if dist < 1.0:
-            return random.uniform(0.10, 0.18)   # near drop: fast
-        elif dist < 3.0:
-            return random.uniform(0.15, 0.25)
-        else:
-            return random.uniform(0.20, 0.32)   # far from drop: still quick
-
-    def fill_photo_group(time_budget: float, t_cursor: float, photo_idx: int):
-        segs = []
-        t = 0.0
-        while t < time_budget - 0.05:
-            dur = min(photo_dur(t_cursor + t), time_budget - t)
-            if dur < 0.04:
-                break
-            segs.append(('photo', image_paths[photo_idx % len(image_paths)], dur))
-            photo_idx += 1
-            t += dur
-        return segs, photo_idx
-
-    # ── Build segment plan ────────────────────────────────────────
-    # Playhead per video: continue from where we left off
+    # ── Playhead per video: continue from where we left off ───────
     vid_playhead: dict[str, float] = {}
 
     def pick_clip_start(vid_path: str, dur: float) -> float:
         total = get_video_duration(vid_path)
         if vid_path not in vid_playhead:
-            # First use: random start with enough room for all planned clips
             total_needed = sum(vd for v, vd in vid_sources if v == vid_path)
             max_s = max(0.0, total - total_needed - 0.3)
             vid_playhead[vid_path] = random.uniform(0.1, max_s) if max_s > 0.1 else 0.0
         start = min(vid_playhead[vid_path], max(0.0, total - dur - 0.1))
-        vid_playhead[vid_path] = start + dur  # advance playhead
+        vid_playhead[vid_path] = start + dur
         return start
 
     segments = []
     photo_idx = 0
     t_cursor  = 0.0
 
-    for group_i in range(4):
-        group_segs, photo_idx = fill_photo_group(group_times[group_i], t_cursor, photo_idx)
-        for seg in group_segs:
-            t_cursor += seg[2]
-        segments.extend(group_segs)
+    if video_only:
+        # VHS: pure video clip sequence
+        for v, vd in vid_sources:
+            clip_s = pick_clip_start(v, vd)
+            segments.append(('video_at', v, vd, clip_s))
+            t_cursor += vd
+    else:
+        # ── Photo group timing ────────────────────────────────────
+        total_photo_time = clip_dur - total_vid
+        group_times = [
+            total_photo_time * 0.20,
+            total_photo_time * 0.27,
+            total_photo_time * 0.27,
+            total_photo_time * 0.26,
+        ]
+
+        def photo_dur(t_in_clip: float) -> float:
+            dist = abs(drop_rel - t_in_clip)
+            if dist < 1.0:
+                return random.uniform(0.10, 0.18)
+            elif dist < 3.0:
+                return random.uniform(0.15, 0.25)
+            else:
+                return random.uniform(0.20, 0.32)
+
+        def fill_photo_group(time_budget: float, t_cursor: float, photo_idx: int):
+            segs = []
+            t = 0.0
+            while t < time_budget - 0.05:
+                dur = min(photo_dur(t_cursor + t), time_budget - t)
+                if dur < 0.04:
+                    break
+                segs.append(('photo', image_paths[photo_idx % len(image_paths)], dur))
+                photo_idx += 1
+                t += dur
+            return segs, photo_idx
+
+        for group_i in range(4):
+            group_segs, photo_idx = fill_photo_group(group_times[group_i], t_cursor, photo_idx)
+            for seg in group_segs:
+                t_cursor += seg[2]
+            segments.extend(group_segs)
 
         if group_i < 3 and t_cursor < clip_dur - 0.5:
-            vid_path, vid_dur = vid_sources[group_i]
-            vid_dur = min(vid_dur, clip_dur - t_cursor)
-            if vid_dur >= 0.5:
-                clip_s = pick_clip_start(vid_path, vid_dur)
-                segments.append(('video_at', vid_path, vid_dur, clip_s))
-                t_cursor += vid_dur
+            if group_i < len(vid_sources):
+                vid_path, vid_dur = vid_sources[group_i]
+                vid_dur = min(vid_dur, clip_dur - t_cursor)
+                if vid_dur >= 0.5:
+                    clip_s = pick_clip_start(vid_path, vid_dur)
+                    segments.append(('video_at', vid_path, vid_dur, clip_s))
+                    t_cursor += vid_dur
 
     # ── Render every segment to a short .mp4 ─────────────────────
     clips = []
@@ -525,11 +541,27 @@ def _generate_sync(category: str, color: str, track: str) -> str:
 
     # Mixed mode: photos + video clips (video_sample.mp4 schema)
     video_dir = os.path.join(IMAGES_DIR, category, color, "video")
-    if os.path.isdir(video_dir) and glob.glob(os.path.join(video_dir, "*.mp4")):
+    has_videos = os.path.isdir(video_dir) and bool(glob.glob(os.path.join(video_dir, "*.mp4")))
+
+    # Check if there are photos (VHS has only videos, no photos)
+    img_dir = os.path.join(IMAGES_DIR, category, color)
+    photo_exts = ["*.jpg", "*.jpeg", "*.png", "*.webp"]
+    has_photos = any(glob.glob(os.path.join(img_dir, ext)) for ext in photo_exts)
+
+    if has_videos and has_photos:
         real_photos = get_images(category, color)
         random.shuffle(real_photos)
         generate_mixed_ffmpeg(
             image_paths=real_photos,
+            video_dir=video_dir,
+            analysis=analysis,
+            audio_path=audio_path,
+            output_path=output_file,
+        )
+    elif has_videos and not has_photos:
+        # VHS / video-only mode: stitch video clips directly
+        generate_mixed_ffmpeg(
+            image_paths=[],
             video_dir=video_dir,
             analysis=analysis,
             audio_path=audio_path,

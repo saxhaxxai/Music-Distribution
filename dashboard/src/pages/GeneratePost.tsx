@@ -225,7 +225,7 @@ export function GeneratePost() {
 
       {/* Step 1: Category */}
       {!category && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {CATEGORIES.map((cat) => (
             <button
               key={cat.value}
@@ -258,7 +258,7 @@ export function GeneratePost() {
         <div>
           <h2 className="text-lg font-bold text-gray-900 mb-1">Choose a vibe</h2>
           <p className="text-sm text-gray-500 mb-5">Each color creates a different mood for your TikTok</p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {selectedCat.subcategories.map((sub) => (
               <button
                 key={sub.value}
@@ -325,8 +325,8 @@ export function GeneratePost() {
                       <div className="text-sm font-semibold text-gray-900 truncate">{track.name}</div>
                       <div className="text-xs text-gray-500">{formatTime(track.duration)}</div>
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-gray-400">
-                      <div className="text-center">
+                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                      <div className="text-center hidden sm:block">
                         <div className="font-bold text-gray-700">{track.tempo}</div>
                         <div>BPM</div>
                       </div>
@@ -337,9 +337,9 @@ export function GeneratePost() {
                         </div>
                         <div>Drop</div>
                       </div>
-                      <div className="text-center">
+                      <div className="text-center hidden sm:block">
                         <div className="font-bold text-gray-700">{formatTime(track.clip_start)}-{formatTime(track.clip_end)}</div>
-                        <div>Clip window</div>
+                        <div>Clip</div>
                       </div>
                     </div>
                   </button>
@@ -425,7 +425,7 @@ export function GeneratePost() {
           </div>
 
           {/* Caption & Hashtags */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Caption */}
             <div className="bg-white rounded-2xl border border-gray-200 p-5">
               <div className="flex items-center justify-between mb-3">

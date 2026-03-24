@@ -41,7 +41,7 @@ export function StatsGrid({ totalViews, totalLikes, totalPosts, activeCreators, 
   }
 
   return (
-    <div className={`grid gap-4 ${isAdmin ? 'grid-cols-5' : 'grid-cols-4'}`}>
+    <div className={`grid gap-3 grid-cols-2 sm:gap-4 ${isAdmin ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
       <StatCard
         label="Total Views"
         value={formatNumber(totalViews)}
