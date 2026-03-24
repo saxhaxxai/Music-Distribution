@@ -59,7 +59,8 @@ export function PostsTable({ posts, onRefreshed }: Props) {
       })
       if (insertError) throw new Error(`DB error: ${insertError.message}`)
       if (stats.views >= 100 && post.status === 'pending') {
-        await supabase.from('posts').update({ status: 'approved' }).eq('id', post.id)
+        const { error: updateError } = await supabase.from('posts').update({ status: 'approved' }).eq('id', post.id)
+        if (updateError) throw new Error(`Status update failed: ${updateError.message}`)
       }
       onRefreshed?.()
     } catch (e: unknown) {
