@@ -306,66 +306,79 @@ def generate_mixed_ffmpeg(
     output_path: str,
 ):
     """
-    Mixed photo+video TikTok following video_sample.mp4 schema:
+    Mixed photo+video TikTok — 3 video clips total, structured as:
 
-    Pre-drop  → rapid photo flash (0.08–0.13s each)
-    At drop   → burst of ~10 very fast photos (0.067–0.10s)
-    Post-drop → repeating block: [3 photos × 0.08–0.13s] + [1 video clip × 1.0–1.7s]
+    [4 photos] → [video 1] → [4 photos] → [video 2] → [4 photos] → [video 3] → [remaining photos]
+
+    Photos slow enough to read (~0.35-0.55s), speeding up around the drop.
+    Video clips: 2-3s each, placed at roughly 1/4, 1/2, 3/4 of total duration.
     """
     import shutil
     tmpdir = tempfile.mkdtemp()
 
-    clip_start   = analysis["clip_start"]
-    clip_end     = analysis["clip_end"]
-    clip_dur     = analysis["clip_duration"]
-    drop_time    = analysis["drop_time"]
-    drop_rel     = drop_time - clip_start
+    clip_start = analysis["clip_start"]
+    clip_dur   = analysis["clip_duration"]
+    drop_rel   = analysis["drop_time"] - clip_start
 
     videos = glob.glob(os.path.join(video_dir, "*.mp4"))
     random.shuffle(videos)
     random.shuffle(image_paths)
 
-    # ── Build segment plan ────────────────────────────────────────
-    # Each entry: ('photo', path, dur) | ('video', path, dur)
-    segments = []
-    t = 0.0
-    photo_idx = 0
-    video_idx = 0
+    # ── Define the 3 video clip durations ─────────────────────────
+    vid_durs = [random.uniform(2.0, 3.0) for _ in range(3)]
+    total_vid = sum(vid_durs)
 
-    while t < clip_dur - 0.05:
-        remaining       = clip_dur - t
-        time_to_drop    = drop_rel - t
+    # Remaining time split evenly for 4 photo groups
+    total_photo_time = clip_dur - total_vid
+    # Photo group sizes (in time): intro slightly shorter, others equal
+    group_times = [
+        total_photo_time * 0.20,  # intro
+        total_photo_time * 0.27,  # after vid 1
+        total_photo_time * 0.27,  # after vid 2
+        total_photo_time * 0.26,  # outro
+    ]
 
-        if time_to_drop > 0.5:
-            # Pre-drop: rapid photo flash
-            dur = min(random.uniform(0.08, 0.13), remaining)
-            segments.append(('photo', image_paths[photo_idx % len(image_paths)], dur))
-            photo_idx += 1
-            t += dur
-
-        elif time_to_drop > -1.0:
-            # Around drop: ultra-fast burst
-            dur = min(random.uniform(0.067, 0.10), remaining)
-            segments.append(('photo', image_paths[photo_idx % len(image_paths)], dur))
-            photo_idx += 1
-            t += dur
-
+    def photo_dur(t_in_clip: float) -> float:
+        """Photo duration based on proximity to drop."""
+        dist = abs(drop_rel - t_in_clip)
+        if dist < 1.0:
+            return random.uniform(0.20, 0.30)   # near drop: faster
+        elif dist < 3.0:
+            return random.uniform(0.30, 0.42)
         else:
-            # Post-drop: 3 rapid photos → 1 video clip → repeat
-            for _ in range(3):
-                if t >= clip_dur - 0.05:
-                    break
-                dur = min(random.uniform(0.08, 0.13), clip_dur - t)
-                segments.append(('photo', image_paths[photo_idx % len(image_paths)], dur))
-                photo_idx += 1
-                t += dur
+            return random.uniform(0.38, 0.55)   # far from drop: slower
 
-            if t < clip_dur - 0.5 and videos:
-                vid_dur = min(random.uniform(1.0, 1.7), clip_dur - t)
-                if vid_dur >= 0.3:
-                    segments.append(('video', videos[video_idx % len(videos)], vid_dur))
-                    video_idx += 1
-                    t += vid_dur
+    def fill_photo_group(time_budget: float, t_cursor: float, photo_idx: int):
+        segs = []
+        t = 0.0
+        while t < time_budget - 0.1:
+            dur = min(photo_dur(t_cursor + t), time_budget - t)
+            if dur < 0.05:
+                break
+            segs.append(('photo', image_paths[photo_idx % len(image_paths)], dur))
+            photo_idx += 1
+            t += dur
+        return segs, photo_idx
+
+    # ── Build segment plan ────────────────────────────────────────
+    segments = []
+    photo_idx = 0
+    t_cursor  = 0.0
+
+    for group_i in range(4):
+        # Photo group
+        group_segs, photo_idx = fill_photo_group(group_times[group_i], t_cursor, photo_idx)
+        for seg in group_segs:
+            t_cursor += seg[2]
+        segments.extend(group_segs)
+
+        # Video clip (not after last photo group)
+        if group_i < 3 and t_cursor < clip_dur - 0.5:
+            vid_dur = min(vid_durs[group_i], clip_dur - t_cursor)
+            if vid_dur >= 0.5:
+                vid = videos[group_i % len(videos)]
+                segments.append(('video', vid, vid_dur))
+                t_cursor += vid_dur
 
     # ── Render every segment to a short .mp4 ─────────────────────
     clips = []
@@ -375,7 +388,6 @@ def generate_mixed_ffmpeg(
             photo_to_clip(source, dur, out_clip)
         else:
             extract_video_clip(source, dur, out_clip)
-
         if os.path.exists(out_clip) and os.path.getsize(out_clip) > 500:
             clips.append(out_clip)
 
@@ -383,7 +395,7 @@ def generate_mixed_ffmpeg(
         shutil.rmtree(tmpdir)
         raise RuntimeError("No segments generated")
 
-    # ── Concat all clips ──────────────────────────────────────────
+    # ── Concat ────────────────────────────────────────────────────
     concat_file = os.path.join(tmpdir, "concat.txt")
     with open(concat_file, "w") as f:
         for c in clips:
