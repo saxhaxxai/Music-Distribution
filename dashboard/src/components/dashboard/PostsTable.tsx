@@ -8,7 +8,6 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://music-distribution-prod
 interface Props {
   posts: Post[]
   onRefreshed?: () => void
-  isAdmin?: boolean
 }
 
 function getLatestAnalytics(post: Post) {
@@ -30,7 +29,7 @@ const statusColors: Record<string, string> = {
   rejected: 'bg-red-100 text-red-700',
 }
 
-export function PostsTable({ posts, onRefreshed, isAdmin }: Props) {
+export function PostsTable({ posts, onRefreshed }: Props) {
   const [refreshing, setRefreshing] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -90,7 +89,7 @@ export function PostsTable({ posts, onRefreshed, isAdmin }: Props) {
               <th className="px-4 py-3 font-medium sm:px-6">Likes</th>
               <th className="hidden sm:table-cell px-6 py-3 font-medium">Engagement</th>
               <th className="hidden sm:table-cell px-6 py-3 font-medium">Date</th>
-              {isAdmin && <th className="px-4 py-3 font-medium sm:px-6"></th>}
+              <th className="px-4 py-3 font-medium sm:px-6"></th>
             </tr>
           </thead>
           <tbody>
@@ -136,18 +135,16 @@ export function PostsTable({ posts, onRefreshed, isAdmin }: Props) {
                   <td className="hidden sm:table-cell px-6 py-4 text-sm text-gray-500">
                     {new Date(post.created_at).toLocaleDateString()}
                   </td>
-                  {isAdmin && (
-                    <td className="px-4 py-3 sm:px-6 sm:py-4">
-                      <button
-                        onClick={() => refreshPost(post)}
-                        disabled={isRefreshing}
-                        title="Refresh analytics"
-                        className="text-gray-400 hover:text-blue-600 transition-colors disabled:opacity-40"
-                      >
-                        <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                      </button>
-                    </td>
-                  )}
+                  <td className="px-4 py-3 sm:px-6 sm:py-4">
+                    <button
+                      onClick={() => refreshPost(post)}
+                      disabled={isRefreshing}
+                      title="Refresh analytics"
+                      className="text-gray-400 hover:text-blue-600 transition-colors disabled:opacity-40"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    </button>
+                  </td>
                 </tr>
               )
             })}

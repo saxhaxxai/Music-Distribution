@@ -110,8 +110,7 @@ export function AdminOverview() {
         totalPosts={posts.length}
         activeCreators={activeCreators}
         avgEngagement={avgEngagement}
-        isAdmin
-      />
+             />
 
       <ViewsChart data={chartData} />
 
