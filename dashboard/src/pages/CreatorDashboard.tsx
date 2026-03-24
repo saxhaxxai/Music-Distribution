@@ -101,7 +101,7 @@ export function CreatorDashboard() {
 
       <div>
         <h2 className="text-lg font-bold text-gray-900 mb-4">Your Posts</h2>
-        <PostsTable posts={filteredPosts} />
+        <PostsTable posts={filteredPosts} onRefreshed={fetchData} />
       </div>
 
       {showSubmit && (
