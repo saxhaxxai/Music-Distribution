@@ -257,84 +257,133 @@ def generate_video_ffmpeg(
         raise RuntimeError(f"ffmpeg failed: {result.stderr[-500:]}")
 
 
-def generate_video_clips_ffmpeg(
+def get_video_duration(path: str) -> float:
+    result = subprocess.run(
+        ["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", path],
+        capture_output=True, text=True
+    )
+    try:
+        return float(result.stdout.strip())
+    except Exception:
+        return 5.0
+
+
+def extract_video_clip(vid_path: str, dur: float, out_path: str):
+    """Extract a random clip of `dur` seconds from vid_path, scaled to WIDTH×HEIGHT."""
+    vid_total = get_video_duration(vid_path)
+    max_start = max(0, vid_total - dur - 0.3)
+    start = random.uniform(0.1, max_start) if max_start > 0.1 else 0
+    subprocess.run([
+        "ffmpeg", "-y",
+        "-ss", str(start), "-t", str(dur),
+        "-i", vid_path,
+        "-vf", f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,crop={WIDTH}:{HEIGHT}",
+        "-an", "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-r", "30",
+        out_path,
+    ], capture_output=True, timeout=15)
+
+
+def photo_to_clip(img_path: str, dur: float, out_path: str):
+    """Convert a photo to a still video clip of `dur` seconds."""
+    tmp_img = out_path + "_src.jpg"
+    prepare_image(img_path, tmp_img)
+    subprocess.run([
+        "ffmpeg", "-y",
+        "-loop", "1", "-t", str(dur), "-i", tmp_img,
+        "-vf", f"scale={WIDTH}:{HEIGHT}",
+        "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-r", "30",
+        out_path,
+    ], capture_output=True, timeout=10)
+    if os.path.exists(tmp_img):
+        os.remove(tmp_img)
+
+
+def generate_mixed_ffmpeg(
+    image_paths: list[str],
     video_dir: str,
+    analysis: dict,
     audio_path: str,
-    audio_start: float,
-    audio_end: float,
-    drop_time: float,
     output_path: str,
 ):
     """
-    Generate a TikTok from video clips.
-    Before drop: long clips (2-3s) — stay on one video.
-    At drop: fast cuts (0.4-0.8s) — switch between videos rapidly.
+    Mixed photo+video TikTok following video_sample.mp4 schema:
+
+    Pre-drop  → rapid photo flash (0.08–0.13s each)
+    At drop   → burst of ~10 very fast photos (0.067–0.10s)
+    Post-drop → repeating block: [3 photos × 0.08–0.13s] + [1 video clip × 1.0–1.7s]
     """
+    import shutil
     tmpdir = tempfile.mkdtemp()
 
-    # 1. Find all videos
+    clip_start   = analysis["clip_start"]
+    clip_end     = analysis["clip_end"]
+    clip_dur     = analysis["clip_duration"]
+    drop_time    = analysis["drop_time"]
+    drop_rel     = drop_time - clip_start
+
     videos = glob.glob(os.path.join(video_dir, "*.mp4"))
-    if not videos:
-        raise RuntimeError(f"No videos found in {video_dir}")
-
     random.shuffle(videos)
-    total_needed = audio_end - audio_start
-    drop_relative = drop_time - audio_start if drop_time > audio_start else total_needed * 0.3
+    random.shuffle(image_paths)
 
-    # 2. Generate clip durations synced to drop
-    # Before drop: long clips (2-3s) — stay on one video
-    # At/after drop: short clips (0.5-1s) — fast cuts between videos
-    clip_durations = []
-    t = 0
-    while t < total_needed:
-        time_to_drop = drop_relative - t
-        if time_to_drop > 2.0:
-            dur = random.uniform(2.5, 3.5)  # slow, stay on one clip
-        elif time_to_drop > 0:
-            dur = random.uniform(1.5, 2.0)  # building up
-        elif time_to_drop > -3.0:
-            dur = random.uniform(0.4, 0.8)  # DROP — fast cuts
-        elif time_to_drop > -6.0:
-            dur = random.uniform(0.6, 1.2)  # post-drop energy
-        else:
-            dur = random.uniform(1.5, 2.5)  # outro, slow down
+    # ── Build segment plan ────────────────────────────────────────
+    # Each entry: ('photo', path, dur) | ('video', path, dur)
+    segments = []
+    t = 0.0
+    photo_idx = 0
+    video_idx = 0
 
-        if t + dur > total_needed:
-            dur = total_needed - t
-        if dur > 0.1:
-            clip_durations.append(dur)
+    while t < clip_dur - 0.05:
+        remaining       = clip_dur - t
+        time_to_drop    = drop_rel - t
+
+        if time_to_drop > 0.5:
+            # Pre-drop: rapid photo flash
+            dur = min(random.uniform(0.08, 0.13), remaining)
+            segments.append(('photo', image_paths[photo_idx % len(image_paths)], dur))
+            photo_idx += 1
             t += dur
 
-    # 3. Extract clips from videos
+        elif time_to_drop > -1.0:
+            # Around drop: ultra-fast burst
+            dur = min(random.uniform(0.067, 0.10), remaining)
+            segments.append(('photo', image_paths[photo_idx % len(image_paths)], dur))
+            photo_idx += 1
+            t += dur
+
+        else:
+            # Post-drop: 3 rapid photos → 1 video clip → repeat
+            for _ in range(3):
+                if t >= clip_dur - 0.05:
+                    break
+                dur = min(random.uniform(0.08, 0.13), clip_dur - t)
+                segments.append(('photo', image_paths[photo_idx % len(image_paths)], dur))
+                photo_idx += 1
+                t += dur
+
+            if t < clip_dur - 0.5 and videos:
+                vid_dur = min(random.uniform(1.0, 1.7), clip_dur - t)
+                if vid_dur >= 0.3:
+                    segments.append(('video', videos[video_idx % len(videos)], vid_dur))
+                    video_idx += 1
+                    t += vid_dur
+
+    # ── Render every segment to a short .mp4 ─────────────────────
     clips = []
-    for i, dur in enumerate(clip_durations):
-        vid = videos[i % len(videos)]
-        probe = subprocess.run(
-            ["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", vid],
-            capture_output=True, text=True
-        )
-        vid_duration = float(probe.stdout.strip())
+    for i, (seg_type, source, dur) in enumerate(segments):
+        out_clip = os.path.join(tmpdir, f"seg_{i:04d}.mp4")
+        if seg_type == 'photo':
+            photo_to_clip(source, dur, out_clip)
+        else:
+            extract_video_clip(source, dur, out_clip)
 
-        max_start = max(0, vid_duration - dur - 0.3)
-        start = random.uniform(0.1, max_start) if max_start > 0.1 else 0
-
-        out_clip = os.path.join(tmpdir, f"clip_{i:03d}.mp4")
-        subprocess.run([
-            "ffmpeg", "-y",
-            "-ss", str(start), "-t", str(dur),
-            "-i", vid,
-            "-vf", f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,crop={WIDTH}:{HEIGHT}",
-            "-an", "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
-            out_clip,
-        ], capture_output=True, timeout=10)
-
-        if os.path.exists(out_clip) and os.path.getsize(out_clip) > 1000:
+        if os.path.exists(out_clip) and os.path.getsize(out_clip) > 500:
             clips.append(out_clip)
 
-        if i > len(videos) * 5:
-            break
+    if not clips:
+        shutil.rmtree(tmpdir)
+        raise RuntimeError("No segments generated")
 
-    # 3. Concat all clips
+    # ── Concat all clips ──────────────────────────────────────────
     concat_file = os.path.join(tmpdir, "concat.txt")
     with open(concat_file, "w") as f:
         for c in clips:
@@ -344,25 +393,22 @@ def generate_video_clips_ffmpeg(
     subprocess.run([
         "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_file,
         "-c", "copy", merged,
-    ], capture_output=True, timeout=30)
+    ], capture_output=True, timeout=120)
 
-    # 4. Add audio
-    audio_duration = audio_end - audio_start
+    # ── Add audio ─────────────────────────────────────────────────
     subprocess.run([
         "ffmpeg", "-y",
         "-i", merged,
-        "-ss", str(audio_start), "-t", str(audio_duration), "-i", audio_path,
+        "-ss", str(clip_start), "-t", str(clip_dur), "-i", audio_path,
         "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
         "-shortest", "-movflags", "+faststart",
         output_path,
     ], capture_output=True, timeout=30)
 
-    # Cleanup
-    import shutil
     shutil.rmtree(tmpdir)
 
     if not os.path.exists(output_path) or os.path.getsize(output_path) < 1000:
-        raise RuntimeError("Video generation failed")
+        raise RuntimeError("Mixed video generation failed")
 
 
 # ─── ENDPOINTS ───────────────────────────────────────────────────
@@ -428,19 +474,20 @@ def _generate_sync(category: str, color: str, track: str) -> str:
     )
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    # Check if this is a video-based category (has a "video" subfolder)
+    # Mixed mode: photos + video clips (video_sample.mp4 schema)
     video_dir = os.path.join(IMAGES_DIR, category, color, "video")
     if os.path.isdir(video_dir) and glob.glob(os.path.join(video_dir, "*.mp4")):
-        generate_video_clips_ffmpeg(
+        real_photos = get_images(category, color)
+        random.shuffle(real_photos)
+        generate_mixed_ffmpeg(
+            image_paths=real_photos,
             video_dir=video_dir,
+            analysis=analysis,
             audio_path=audio_path,
-            audio_start=analysis["clip_start"],
-            audio_end=analysis["clip_end"],
-            drop_time=analysis["drop_time"],
             output_path=output_file,
         )
     else:
-        # Photo-based slideshow
+        # Photo-only slideshow (categories without video/ subfolder)
         real_photos = get_images(category, color)
         durations = generate_synced_cuts(analysis)
         n_needed = len(durations)
