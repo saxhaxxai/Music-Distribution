@@ -147,11 +147,26 @@ export function GeneratePost() {
     setTimeout(() => setCopied(null), 2000)
   }
 
-  function handleDownload() {
+  async function handleDownload() {
     if (!videoUrl) return
+    const filename = `tiktok_${category}_${subcategory}_${Date.now()}.mp4`
+
+    // On iOS, use Web Share API → opens native share sheet → "Save Video" goes to Photos
+    if (navigator.share && /iphone|ipad|ipod/i.test(navigator.userAgent)) {
+      try {
+        const res = await fetch(videoUrl)
+        const blob = await res.blob()
+        const file = new File([blob], filename, { type: 'video/mp4' })
+        await navigator.share({ files: [file], title: filename })
+        return
+      } catch {
+        // Fallback to regular download if share fails
+      }
+    }
+
     const a = document.createElement('a')
     a.href = videoUrl
-    a.download = `tiktok_${category}_${subcategory}_${Date.now()}.mp4`
+    a.download = filename
     a.click()
   }
 
