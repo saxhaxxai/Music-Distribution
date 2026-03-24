@@ -8,4 +8,4 @@ venv/
 tiktok-engine/output/
 tiktok-engine/frames*/
 tiktok-engine/*.png
-tiktok-engine/.cache/
+# tiktok-engine/.cache/  ← included so Railway has pre-computed analysis
