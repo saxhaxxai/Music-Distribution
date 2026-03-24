@@ -62,15 +62,15 @@ def analyze_track(audio_path: str) -> dict:
     if audio_path in _track_cache:
         return _track_cache[audio_path]
 
-    # Check file cache
+    # Check file cache — use file size as stable key (mtime changes on git clone)
     os.makedirs(CACHE_DIR, exist_ok=True)
     cache_file = os.path.join(CACHE_DIR, os.path.basename(audio_path) + ".json")
-    file_mtime = os.path.getmtime(audio_path)
+    file_size = os.path.getsize(audio_path)
 
     if os.path.exists(cache_file):
         with open(cache_file) as f:
             cached = json.load(f)
-        if cached.get("mtime") == file_mtime:
+        if cached.get("file_size") == file_size:
             _track_cache[audio_path] = cached
             return cached
 
@@ -104,7 +104,7 @@ def analyze_track(audio_path: str) -> dict:
         "clip_start": clip_start,
         "clip_end": clip_end,
         "clip_duration": clip_end - clip_start,
-        "mtime": file_mtime,
+        "file_size": file_size,
     }
 
     # Save to file cache
