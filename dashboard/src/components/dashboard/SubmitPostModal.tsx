@@ -46,6 +46,7 @@ export function SubmitPostModal({ onClose, onSubmitted }: Props) {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [selectedAccount, setSelectedAccount] = useState<string>('')
   const [newHandle, setNewHandle] = useState('')
+  const [newPlatform, setNewPlatform] = useState<'tiktok' | 'instagram'>('tiktok')
   const [showAddAccount, setShowAddAccount] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -72,7 +73,7 @@ export function SubmitPostModal({ onClose, onSubmitted }: Props) {
 
     const { data, error: err } = await supabase.from('accounts').insert({
       user_id: user.id,
-      platform: 'tiktok',
+      platform: newPlatform,
       handle,
     }).select().single()
 
@@ -92,7 +93,7 @@ export function SubmitPostModal({ onClose, onSubmitted }: Props) {
     setError('')
 
     if (!selectedAccount) {
-      setError('Please select or add a TikTok account first.')
+      setError('Please select or add an account first.')
       return
     }
 
@@ -149,7 +150,7 @@ export function SubmitPostModal({ onClose, onSubmitted }: Props) {
           {/* Account selector */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              TikTok Account
+              Account
             </label>
             {accounts.length > 0 && !showAddAccount ? (
               <div className="space-y-2">
@@ -174,21 +175,40 @@ export function SubmitPostModal({ onClose, onSubmitted }: Props) {
                 </button>
               </div>
             ) : (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newHandle}
-                  onChange={(e) => setNewHandle(e.target.value)}
-                  placeholder="@your_tiktok_handle"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddAccount}
-                  className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-                >
-                  Add
-                </button>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <select
+                    value={newPlatform}
+                    onChange={(e) => setNewPlatform(e.target.value as 'tiktok' | 'instagram')}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="tiktok">TikTok</option>
+                    <option value="instagram">Instagram</option>
+                  </select>
+                  <input
+                    type="text"
+                    value={newHandle}
+                    onChange={(e) => setNewHandle(e.target.value)}
+                    placeholder={`@your_${newPlatform}_handle`}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddAccount}
+                    className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+                  >
+                    Add
+                  </button>
+                </div>
+                {accounts.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddAccount(false)}
+                    className="text-xs text-gray-500 hover:underline"
+                  >
+                    Cancel
+                  </button>
+                )}
               </div>
             )}
           </div>
