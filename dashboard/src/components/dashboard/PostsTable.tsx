@@ -58,6 +58,9 @@ export function PostsTable({ posts, onRefreshed, isAdmin }: Props) {
         engagement_rate: stats.engagement_rate,
         source: 'yt-dlp',
       })
+      if (stats.views >= 100 && post.status === 'pending') {
+        await supabase.from('posts').update({ status: 'approved' }).eq('id', post.id)
+      }
       onRefreshed?.()
     } catch (e: unknown) {
       setErrors(prev => ({ ...prev, [post.id]: (e as Error).message }))

@@ -45,6 +45,9 @@ export function AdminOverview() {
           engagement_rate: stats.engagement_rate,
           source: 'yt-dlp',
         })
+        if (stats.views >= 100 && post.status === 'pending') {
+          await supabase.from('posts').update({ status: 'approved' }).eq('id', post.id)
+        }
       } catch { /* skip failed posts */ }
     }
     await fetchPosts()
