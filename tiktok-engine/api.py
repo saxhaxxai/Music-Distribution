@@ -431,14 +431,14 @@ def generate_mixed_ffmpeg(
                 t_cursor += seg[2]
             segments.extend(group_segs)
 
-        if group_i < 3 and t_cursor < clip_dur - 0.5:
-            if group_i < len(vid_sources):
-                vid_path, vid_dur = vid_sources[group_i]
-                vid_dur = min(vid_dur, clip_dur - t_cursor)
-                if vid_dur >= 0.5:
-                    clip_s = pick_clip_start(vid_path, vid_dur)
-                    segments.append(('video_at', vid_path, vid_dur, clip_s))
-                    t_cursor += vid_dur
+            if group_i < 3 and t_cursor < clip_dur - 0.5:
+                if group_i < len(vid_sources):
+                    vid_path, vid_dur = vid_sources[group_i]
+                    vid_dur = min(vid_dur, clip_dur - t_cursor)
+                    if vid_dur >= 0.5:
+                        clip_s = pick_clip_start(vid_path, vid_dur)
+                        segments.append(('video_at', vid_path, vid_dur, clip_s))
+                        t_cursor += vid_dur
 
     # ── Render every segment to a short .mp4 ─────────────────────
     clips = []
