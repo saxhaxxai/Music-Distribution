@@ -375,24 +375,18 @@ def generate_mixed_ffmpeg(
         return segs, photo_idx
 
     # ── Build segment plan ────────────────────────────────────────
-    # Track used intervals per video to avoid overlapping clips
-    vid_used: dict[str, list[tuple[float, float]]] = {}
+    # Playhead per video: continue from where we left off
+    vid_playhead: dict[str, float] = {}
 
     def pick_clip_start(vid_path: str, dur: float) -> float:
         total = get_video_duration(vid_path)
-        used = vid_used.get(vid_path, [])
-        # Try up to 10 random starts, pick one that doesn't overlap
-        for _ in range(10):
-            max_s = max(0.0, total - dur - 0.3)
-            start = random.uniform(0.1, max_s) if max_s > 0.1 else 0.0
-            end = start + dur
-            if not any(s < end and start < e for s, e in used):
-                vid_used.setdefault(vid_path, []).append((start, end))
-                return start
-        # Fallback: just pick after the last used segment
-        last_end = max((e for _, e in used), default=0.0)
-        start = min(last_end + 0.1, max(0.0, total - dur - 0.1))
-        vid_used.setdefault(vid_path, []).append((start, start + dur))
+        if vid_path not in vid_playhead:
+            # First use: random start with enough room for all planned clips
+            total_needed = sum(vd for v, vd in vid_sources if v == vid_path)
+            max_s = max(0.0, total - total_needed - 0.3)
+            vid_playhead[vid_path] = random.uniform(0.1, max_s) if max_s > 0.1 else 0.0
+        start = min(vid_playhead[vid_path], max(0.0, total - dur - 0.1))
+        vid_playhead[vid_path] = start + dur  # advance playhead
         return start
 
     segments = []
