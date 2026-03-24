@@ -667,6 +667,71 @@ async def generate_caption(req: CaptionRequest):
     }
 
 
+# ─── ANALYTICS TRACKING ──────────────────────────────────────────
+
+class FetchStatsRequest(BaseModel):
+    url: str
+
+
+@app.post("/fetch-stats")
+async def fetch_stats(req: FetchStatsRequest):
+    """
+    Fetch view/like/comment counts for a TikTok or Instagram post URL.
+    Uses yt-dlp to extract public stats without auth.
+    """
+    import asyncio
+    loop = asyncio.get_event_loop()
+
+    def _fetch():
+        try:
+            result = subprocess.run(
+                [
+                    "yt-dlp",
+                    "--no-download",
+                    "--print", "%(view_count)s|%(like_count)s|%(comment_count)s|%(repost_count)s",
+                    "--no-warnings",
+                    "--quiet",
+                    req.url,
+                ],
+                capture_output=True, text=True, timeout=30
+            )
+            if result.returncode != 0 or not result.stdout.strip():
+                return None
+
+            parts = result.stdout.strip().split("|")
+            def safe_int(v: str) -> int:
+                try:
+                    return int(v) if v and v != "None" else 0
+                except Exception:
+                    return 0
+
+            views    = safe_int(parts[0] if len(parts) > 0 else "0")
+            likes    = safe_int(parts[1] if len(parts) > 1 else "0")
+            comments = safe_int(parts[2] if len(parts) > 2 else "0")
+            shares   = safe_int(parts[3] if len(parts) > 3 else "0")
+
+            engagement = round((likes + comments + shares) / views * 100, 2) if views > 0 else 0.0
+
+            return {
+                "views": views,
+                "likes": likes,
+                "comments": comments,
+                "shares": shares,
+                "bookmarks": 0,
+                "engagement_rate": engagement,
+            }
+        except subprocess.TimeoutExpired:
+            return None
+        except Exception:
+            return None
+
+    stats = await loop.run_in_executor(None, _fetch)
+    if stats is None:
+        raise HTTPException(status_code=422, detail="Could not fetch stats for this URL. The post may be private or the platform blocked access.")
+
+    return stats
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

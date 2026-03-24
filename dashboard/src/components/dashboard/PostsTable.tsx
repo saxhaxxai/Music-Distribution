@@ -1,8 +1,14 @@
+import { useState } from 'react'
+import { ExternalLink, RefreshCw } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 import type { Post } from '@/types'
-import { ExternalLink } from 'lucide-react'
+
+const API_URL = import.meta.env.VITE_API_URL || 'https://music-distribution-production.up.railway.app'
 
 interface Props {
   posts: Post[]
+  onRefreshed?: () => void
+  isAdmin?: boolean
 }
 
 function getLatestAnalytics(post: Post) {
@@ -24,7 +30,42 @@ const statusColors: Record<string, string> = {
   rejected: 'bg-red-100 text-red-700',
 }
 
-export function PostsTable({ posts }: Props) {
+export function PostsTable({ posts, onRefreshed, isAdmin }: Props) {
+  const [refreshing, setRefreshing] = useState<string | null>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  async function refreshPost(post: Post) {
+    setRefreshing(post.id)
+    setErrors(e => ({ ...e, [post.id]: '' }))
+    try {
+      const res = await fetch(`${API_URL}/fetch-stats`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: post.url }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || 'Failed')
+      }
+      const stats = await res.json()
+      await supabase.from('analytics').insert({
+        post_id: post.id,
+        views: stats.views,
+        likes: stats.likes,
+        comments: stats.comments,
+        shares: stats.shares,
+        bookmarks: stats.bookmarks,
+        engagement_rate: stats.engagement_rate,
+        source: 'yt-dlp',
+      })
+      onRefreshed?.()
+    } catch (e: unknown) {
+      setErrors(prev => ({ ...prev, [post.id]: (e as Error).message }))
+    } finally {
+      setRefreshing(null)
+    }
+  }
+
   if (!posts.length) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-400">
@@ -46,11 +87,14 @@ export function PostsTable({ posts }: Props) {
               <th className="px-4 py-3 font-medium sm:px-6">Likes</th>
               <th className="hidden sm:table-cell px-6 py-3 font-medium">Engagement</th>
               <th className="hidden sm:table-cell px-6 py-3 font-medium">Date</th>
+              {isAdmin && <th className="px-4 py-3 font-medium sm:px-6"></th>}
             </tr>
           </thead>
           <tbody>
             {posts.map((post) => {
               const stats = getLatestAnalytics(post)
+              const isRefreshing = refreshing === post.id
+              const error = errors[post.id]
               return (
                 <tr key={post.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="px-4 py-3 sm:px-6 sm:py-4">
@@ -62,9 +106,10 @@ export function PostsTable({ posts }: Props) {
                     >
                       <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                       <span className="truncate max-w-[80px] sm:max-w-none">
-                        {post.platform_post_id?.slice(0, 12)}...
+                        {post.url.split('/').pop()?.slice(0, 14) || post.url.slice(0, 14)}...
                       </span>
                     </a>
+                    {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
                   </td>
                   <td className="px-4 py-3 sm:px-6 sm:py-4">
                     <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full font-medium whitespace-nowrap">
@@ -77,17 +122,29 @@ export function PostsTable({ posts }: Props) {
                     </span>
                   </td>
                   <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm font-medium">
-                    {stats ? formatNumber(stats.views) : '-'}
+                    {stats ? formatNumber(stats.views) : '—'}
                   </td>
                   <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm">
-                    {stats ? formatNumber(stats.likes) : '-'}
+                    {stats ? formatNumber(stats.likes) : '—'}
                   </td>
                   <td className="hidden sm:table-cell px-6 py-4 text-sm">
-                    {stats ? `${stats.engagement_rate.toFixed(1)}%` : '-'}
+                    {stats ? `${stats.engagement_rate.toFixed(1)}%` : '—'}
                   </td>
                   <td className="hidden sm:table-cell px-6 py-4 text-sm text-gray-500">
                     {new Date(post.created_at).toLocaleDateString()}
                   </td>
+                  {isAdmin && (
+                    <td className="px-4 py-3 sm:px-6 sm:py-4">
+                      <button
+                        onClick={() => refreshPost(post)}
+                        disabled={isRefreshing}
+                        title="Refresh analytics"
+                        className="text-gray-400 hover:text-blue-600 transition-colors disabled:opacity-40"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               )
             })}
