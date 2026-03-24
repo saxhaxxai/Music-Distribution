@@ -698,7 +698,7 @@ async def fetch_stats(req: FetchStatsRequest):
     async with httpx.AsyncClient(timeout=120) as client:
         resp = await client.post(apify_url, json=payload)
 
-    if resp.status_code != 200:
+    if resp.status_code >= 300:
         raise HTTPException(status_code=502, detail=f"Apify error: {resp.text[:200]}")
 
     items = resp.json()
