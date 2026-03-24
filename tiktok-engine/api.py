@@ -12,6 +12,7 @@ import uuid
 import subprocess
 import tempfile
 import numpy as np
+from contextlib import asynccontextmanager
 from PIL import Image
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -20,7 +21,24 @@ from pydantic import BaseModel
 import librosa
 from scipy.ndimage import uniform_filter1d
 
-app = FastAPI(title="TikTok Generator API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Pre-warm audio analysis cache at startup so /tracks is instant."""
+    import asyncio
+    loop = asyncio.get_event_loop()
+    def warm():
+        for ext in ("*.wav", "*.mp3", "*.aac", "*.m4a"):
+            for t in glob.glob(os.path.join(ASSETS_DIR, ext)):
+                try:
+                    analyze_track(t)
+                except Exception:
+                    pass
+    await loop.run_in_executor(None, warm)
+    yield
+
+
+app = FastAPI(title="TikTok Generator API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
