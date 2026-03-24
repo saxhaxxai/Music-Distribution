@@ -119,13 +119,13 @@ export function AdminOverview() {
           <h2 className="text-lg font-bold text-gray-900 mb-4">
             Pending Review ({pendingPosts.length})
           </h2>
-          <PostsTable posts={pendingPosts} onRefreshed={fetchPosts} isAdmin />
+          <PostsTable posts={pendingPosts} onRefreshed={fetchPosts} />
         </div>
       )}
 
       <div>
         <h2 className="text-lg font-bold text-gray-900 mb-4">All Posts</h2>
-        <PostsTable posts={posts} onRefreshed={fetchPosts} isAdmin />
+        <PostsTable posts={posts} onRefreshed={fetchPosts} />
       </div>
 
       {showSubmit && (
