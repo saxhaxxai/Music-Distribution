@@ -47,7 +47,7 @@ export function PostsTable({ posts, onRefreshed }: Props) {
         throw new Error(err.detail || 'Failed')
       }
       const stats = await res.json()
-      await supabase.from('analytics').insert({
+      const { error: insertError } = await supabase.from('analytics').insert({
         post_id: post.id,
         views: stats.views,
         likes: stats.likes,
@@ -57,6 +57,7 @@ export function PostsTable({ posts, onRefreshed }: Props) {
         engagement_rate: stats.engagement_rate,
         source: 'yt-dlp',
       })
+      if (insertError) throw new Error(`DB error: ${insertError.message}`)
       if (stats.views >= 100 && post.status === 'pending') {
         await supabase.from('posts').update({ status: 'approved' }).eq('id', post.id)
       }
