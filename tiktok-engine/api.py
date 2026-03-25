@@ -444,27 +444,44 @@ def generate_mixed_ffmpeg(
             segments.append(('video_at', v, dur, start))
             t_cursor += dur
     else:
-        segments = []
+        segments  = []
         photo_idx = 0
         t_cursor  = 0.0
-        vid_durs = [random.uniform(1.2, 1.8), random.uniform(2.0, 3.0), random.uniform(2.0, 3.0)]
-        total_vid = sum(vid_durs)
 
-        # ── Pick video sources — reuse same video if long enough ──
+        tempo     = analysis.get("tempo", 120.0)
+        beat      = 60.0 / tempo          # seconds per beat
+
+        # ── Beat-synced photo duration — constant speed ───────────
+        def photo_dur(t_in_clip: float) -> float:
+            return beat / 2               # 2 photos per beat, constant
+
+        def fill_photos_until(target_t: float) -> None:
+            nonlocal photo_idx, t_cursor
+            while t_cursor < target_t - 0.04:
+                dur = min(photo_dur(t_cursor), target_t - t_cursor)
+                if dur < 0.04:
+                    break
+                segments.append(('photo', image_paths[photo_idx % len(image_paths)], dur))
+                photo_idx += 1
+                t_cursor  += dur
+
+        # ── Video durations ───────────────────────────────────────
+        vid_durs = [random.uniform(1.5, 2.5), random.uniform(2.0, 3.0), random.uniform(2.0, 3.0)]
+
+        # ── Pick video sources — 3 different videos ───────────────
         vid_sources = []
+        used_videos: list[str] = []
         for vd in vid_durs:
             chosen = None
             for v in videos:
-                v_total = get_video_duration(v)
-                already_used = sum(vd2 for v2, vd2 in vid_sources if v2 == v)
-                if v_total - already_used >= vd + 1.0:
+                if v not in used_videos and get_video_duration(v) >= vd + 0.5:
                     chosen = v
                     break
             if chosen is None:
                 chosen = videos[len(vid_sources) % len(videos)]
+            used_videos.append(chosen)
             vid_sources.append((chosen, vd))
 
-        # ── Playhead per video: continue from where we left off ───
         vid_playhead: dict[str, float] = {}
 
         def pick_clip_start(vid_path: str, dur: float) -> float:
@@ -476,50 +493,48 @@ def generate_mixed_ffmpeg(
             start = min(vid_playhead[vid_path], max(0.0, total - dur - 0.1))
             vid_playhead[vid_path] = start + dur
             return start
-        # ── Photo group timing ────────────────────────────────────
-        total_photo_time = clip_dur - total_vid
-        group_times = [
-            total_photo_time * 0.20,
-            total_photo_time * 0.27,
-            total_photo_time * 0.27,
-            total_photo_time * 0.26,
-        ]
 
-        def photo_dur(t_in_clip: float) -> float:
-            dist = abs(drop_rel - t_in_clip)
-            if dist < 1.0:
-                return random.uniform(0.10, 0.18)
-            elif dist < 3.0:
-                return random.uniform(0.15, 0.25)
-            else:
-                return random.uniform(0.20, 0.32)
+        # ── Structure: photos → [video 1 AT drop] → photos → video 2 → photos → video 3 ──
+        # Video 1 starts exactly at the drop
+        v1_dur  = vid_durs[0]
+        v1_start_t = max(0.0, min(drop_rel, clip_dur - sum(vid_durs) - 1.0))
 
-        def fill_photo_group(time_budget: float, t_cursor: float, photo_idx: int):
-            segs = []
-            t = 0.0
-            while t < time_budget - 0.05:
-                dur = min(photo_dur(t_cursor + t), time_budget - t)
-                if dur < 0.04:
-                    break
-                segs.append(('photo', image_paths[photo_idx % len(image_paths)], dur))
-                photo_idx += 1
-                t += dur
-            return segs, photo_idx
+        fill_photos_until(v1_start_t)
 
-        for group_i in range(4):
-            group_segs, photo_idx = fill_photo_group(group_times[group_i], t_cursor, photo_idx)
-            for seg in group_segs:
-                t_cursor += seg[2]
-            segments.extend(group_segs)
+        # Insert video 1 at drop
+        vid_path, vd = vid_sources[0]
+        vd = min(vd, clip_dur - t_cursor)
+        if vd >= 0.5:
+            clip_s = pick_clip_start(vid_path, vd)
+            segments.append(('video_at', vid_path, vd, clip_s))
+            t_cursor += vd
 
-            if group_i < 3 and t_cursor < clip_dur - 0.5:
-                if group_i < len(vid_sources):
-                    vid_path, vid_dur = vid_sources[group_i]
-                    vid_dur = min(vid_dur, clip_dur - t_cursor)
-                    if vid_dur >= 0.5:
-                        clip_s = pick_clip_start(vid_path, vid_dur)
-                        segments.append(('video_at', vid_path, vid_dur, clip_s))
-                        t_cursor += vid_dur
+        # Remaining time split evenly for [photos → video 2 → photos → video 3 → photos]
+        remaining = clip_dur - t_cursor
+        # Allocate: 30% photos, video 2, 30% photos, video 3, rest photos
+        v2_dur = min(vid_durs[1], remaining * 0.3)
+        v3_dur = min(vid_durs[2], remaining * 0.3)
+        photo_time_left = remaining - v2_dur - v3_dur
+        v2_t = t_cursor + photo_time_left * 0.40
+        v3_t = v2_t + v2_dur + photo_time_left * 0.35
+
+        fill_photos_until(v2_t)
+        vid_path, _ = vid_sources[1]
+        vd2 = min(v2_dur, clip_dur - t_cursor)
+        if vd2 >= 0.5:
+            clip_s = pick_clip_start(vid_path, vd2)
+            segments.append(('video_at', vid_path, vd2, clip_s))
+            t_cursor += vd2
+
+        fill_photos_until(v3_t)
+        vid_path, _ = vid_sources[2]
+        vd3 = min(v3_dur, clip_dur - t_cursor)
+        if vd3 >= 0.5:
+            clip_s = pick_clip_start(vid_path, vd3)
+            segments.append(('video_at', vid_path, vd3, clip_s))
+            t_cursor += vd3
+
+        fill_photos_until(clip_dur)
 
     # ── Render every segment to a short .mp4 ─────────────────────
     clips = []
