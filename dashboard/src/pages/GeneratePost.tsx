@@ -51,7 +51,9 @@ const CATEGORIES = [
     label: 'LA',
     description: 'Hollywood, Sunset, Palm Trees',
     image: 'https://images.unsplash.com/photo-1534190760961-74e8c1c5c3da?w=400&h=250&fit=crop',
-    disabled: true,
+    subcategories: [
+      { value: 'vhs', label: 'VHS', gradient: 'from-cyan-400 via-blue-500 to-purple-600', description: 'Retro, Glitch, Analog', icon: '\u{1F4FC}', disabled: false },
+    ],
   },
 ]
 

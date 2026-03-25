@@ -35,6 +35,7 @@ const POST_TYPES = [
   { value: 'party_night', label: 'Party — Night Club', category: 'party', color: 'bg-purple-500' },
   { value: 'party_day', label: 'Party — Day Club', category: 'party', color: 'bg-amber-400' },
   { value: 'party_vhs', label: 'Party — VHS', category: 'party', color: 'bg-cyan-500' },
+  { value: 'la_vhs', label: 'LA — VHS', category: 'la', color: 'bg-cyan-500' },
   { value: 'other', label: 'Other', category: 'other', color: 'bg-gray-400' },
 ]
 

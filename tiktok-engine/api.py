@@ -744,11 +744,23 @@ CAPTIONS = {
         "born to rave",
         "dancefloor therapy",
     ],
+    "la": [
+        "House music >>",
+        "LA nights hit different",
+        "this is the vibe",
+        "golden hour house music",
+        "LA and house music",
+        "sunset and house music",
+        "Hollywood house music",
+        "this sound feels different",
+        "cool people listen to house music",
+    ],
 }
 
 HASHTAGS = {
     "italy": "#housemusic #italy #fyp #xyzbca #viral #targetaudience #foryou #techno #deephouse #italianvibes #dolcevita #summer",
     "party": "#housemusic #fyp #viral #club #nightlife #rave #techno #deephouse #dancefloor #xyzbca #foryou #nightout",
+    "la": "#housemusic #la #losangeles #fyp #viral #xyzbca #foryou #techno #deephouse #california #sunset #vibes",
 }
 
 
