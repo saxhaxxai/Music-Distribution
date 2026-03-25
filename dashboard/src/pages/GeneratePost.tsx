@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Download, Loader2, Play, RefreshCw, Sparkles, ChevronLeft, Music, Zap, Copy, Hash, Type } from 'lucide-react'
+import { Download, Loader2, Play, RefreshCw, Sparkles, ChevronLeft, Music, Zap, Copy, Type } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://music-distribution-production.up.railway.app'
 
@@ -134,7 +134,11 @@ export function GeneratePost() {
       })
       if (res.ok) {
         const data = await res.json()
-        setCaption(data.caption)
+        let finalCaption = data.caption
+        if (selectedTrack?.toLowerCase().includes('coffe morning')) {
+          finalCaption += '\n(Coffe morning - Luca edit)'
+        }
+        setCaption(finalCaption)
         setHashtags(data.hashtags)
       }
     } catch { /* silent */ }
@@ -439,102 +443,47 @@ export function GeneratePost() {
             </button>
           </div>
 
-          {/* Caption & Hashtags */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Caption */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                  <Type className="w-4 h-4 text-violet-500" />
-                  Caption
-                </div>
-                {caption && (
-                  <button
-                    onClick={() => copyToClipboard(caption, 'caption')}
-                    className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    {copied === 'caption' ? 'Copied!' : 'Copy'}
-                  </button>
-                )}
+          {/* T-O-S */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                <Type className="w-4 h-4 text-violet-500" />
+                T-O-S
               </div>
-              {captionLoading ? (
-                <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Generating caption...
-                </div>
-              ) : caption ? (
-                <div>
-                  <p className="text-lg font-semibold text-gray-900">{caption}</p>
-                  <button
-                    onClick={generateCaption}
-                    className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 mt-3 transition-colors"
-                  >
-                    <RefreshCw className="w-3 h-3" />
-                    New caption
-                  </button>
-                </div>
-              ) : (
+              {caption && (
                 <button
-                  onClick={generateCaption}
-                  className="text-sm text-blue-600 hover:text-blue-700"
+                  onClick={() => copyToClipboard(caption, 'caption')}
+                  className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors"
                 >
-                  Generate caption
+                  <Copy className="w-3.5 h-3.5" />
+                  {copied === 'caption' ? 'Copied!' : 'Copy'}
                 </button>
               )}
             </div>
-
-            {/* Hashtags */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                  <Hash className="w-4 h-4 text-blue-500" />
-                  Hashtags
-                </div>
-                {hashtags && (
-                  <button
-                    onClick={() => copyToClipboard(hashtags, 'hashtags')}
-                    className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    {copied === 'hashtags' ? 'Copied!' : 'Copy'}
-                  </button>
-                )}
+            {captionLoading ? (
+              <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Generating...
               </div>
-              {captionLoading ? (
-                <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Generating hashtags...
-                </div>
-              ) : hashtags ? (
-                <div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {hashtags.split(' ').filter(Boolean).map((tag, i) => (
-                      <span key={i} className="bg-blue-50 text-blue-700 text-xs font-medium px-2.5 py-1 rounded-full">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                  <button
-                    onClick={generateCaption}
-                    className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 mt-3 transition-colors"
-                  >
-                    <RefreshCw className="w-3 h-3" />
-                    New hashtags
-                  </button>
-                </div>
-              ) : (
+            ) : caption ? (
+              <div>
+                <p className="text-lg font-semibold text-gray-900 whitespace-pre-line">{caption}</p>
                 <button
                   onClick={generateCaption}
-                  className="text-sm text-blue-600 hover:text-blue-700"
+                  className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 mt-3 transition-colors"
                 >
-                  Generate hashtags
+                  <RefreshCw className="w-3 h-3" />
+                  Regenerate
                 </button>
-              )}
-            </div>
+              </div>
+            ) : (
+              <button onClick={generateCaption} className="text-sm text-blue-600 hover:text-blue-700">
+                Generate
+              </button>
+            )}
           </div>
 
-          {/* Full post text (ready to paste) */}
+          {/* Ready to paste */}
           {caption && hashtags && (
             <div className="bg-gray-50 rounded-2xl border border-gray-200 p-5">
               <div className="flex items-center justify-between mb-3">
