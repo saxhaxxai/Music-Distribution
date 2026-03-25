@@ -115,16 +115,22 @@ export function CreatorDashboard() {
 }
 
 function buildChartData(posts: Post[]) {
-  const dailyViews: Record<string, number> = {}
+  const dailyDelta: Record<string, number> = {}
 
   posts.forEach((post) => {
-    post.analytics?.forEach((a) => {
+    if (!post.analytics?.length) return
+    const sorted = [...post.analytics].sort(
+      (a, b) => new Date(a.fetched_at).getTime() - new Date(b.fetched_at).getTime()
+    )
+    sorted.forEach((a, i) => {
       const date = a.fetched_at.split('T')[0]
-      dailyViews[date] = (dailyViews[date] || 0) + a.views
+      const prev = i > 0 ? sorted[i - 1].views : 0
+      const delta = Math.max(0, a.views - prev)
+      dailyDelta[date] = (dailyDelta[date] || 0) + delta
     })
   })
 
-  return Object.entries(dailyViews)
+  return Object.entries(dailyDelta)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, views]) => ({ date, views }))
 }
