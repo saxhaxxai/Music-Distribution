@@ -22,10 +22,84 @@ import librosa
 from scipy.ndimage import uniform_filter1d
 
 
+async def auto_refresh_stats():
+    """Fetch stats for all posts from Supabase via Apify, runs every hour."""
+    import httpx
+
+    supabase_url = os.environ.get("SUPABASE_URL", "").strip()
+    supabase_key = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
+    apify_token = (os.environ.get("APIFY_TOKEN") or "").strip()
+
+    if not supabase_url or not supabase_key or not apify_token:
+        return
+
+    headers = {
+        "apikey": supabase_key,
+        "Authorization": f"Bearer {supabase_key}",
+        "Content-Type": "application/json",
+    }
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        res = await client.get(f"{supabase_url}/rest/v1/posts?select=id,url,status", headers=headers)
+        if res.status_code != 200:
+            return
+        posts = res.json()
+
+    for post in posts:
+        try:
+            apify_url = f"https://api.apify.com/v2/acts/clockworks~tiktok-scraper/run-sync-get-dataset-items?token={apify_token}"
+            payload = {
+                "postURLs": [post["url"]],
+                "resultsType": "posts",
+                "maxItems": 1,
+                "shouldDownloadVideos": False,
+                "shouldDownloadCovers": False,
+            }
+            async with httpx.AsyncClient(timeout=120) as client:
+                resp = await client.post(apify_url, json=payload)
+            if resp.status_code >= 300:
+                continue
+            items = resp.json()
+            if not items:
+                continue
+            item = items[0]
+            views     = item.get("playCount", 0) or 0
+            likes     = item.get("diggCount", 0) or 0
+            comments  = item.get("commentCount", 0) or 0
+            shares    = item.get("shareCount", 0) or 0
+            bookmarks = item.get("collectCount", 0) or 0
+            engagement = round((likes + comments + shares) / views * 100, 2) if views > 0 else 0.0
+
+            analytics_payload = {
+                "post_id": post["id"],
+                "views": views, "likes": likes, "comments": comments,
+                "shares": shares, "bookmarks": bookmarks,
+                "engagement_rate": engagement, "source": "apify-cron",
+            }
+            async with httpx.AsyncClient(timeout=10) as client:
+                await client.post(
+                    f"{supabase_url}/rest/v1/analytics",
+                    json=analytics_payload,
+                    headers=headers,
+                )
+
+            if views >= 100 and post.get("status") == "pending":
+                async with httpx.AsyncClient(timeout=10) as client:
+                    await client.patch(
+                        f"{supabase_url}/rest/v1/posts?id=eq.{post['id']}",
+                        json={"status": "approved"},
+                        headers=headers,
+                    )
+        except Exception:
+            continue
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Pre-warm audio analysis cache at startup so /tracks is instant."""
+    """Pre-warm audio analysis cache at startup, then start hourly stats refresh."""
     import asyncio
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
     loop = asyncio.get_event_loop()
     def warm():
         for ext in ("*.wav", "*.mp3", "*.aac", "*.m4a"):
@@ -35,7 +109,14 @@ async def lifespan(app: FastAPI):
                 except Exception:
                     pass
     await loop.run_in_executor(None, warm)
+
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(auto_refresh_stats, "interval", hours=1)
+    scheduler.start()
+
     yield
+
+    scheduler.shutdown()
 
 
 app = FastAPI(title="TikTok Generator API", lifespan=lifespan)
