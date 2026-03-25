@@ -487,14 +487,14 @@ export function GeneratePost() {
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-medium text-gray-900">Ready to paste</span>
                 <button
-                  onClick={() => copyToClipboard(`${caption}${selectedTrack?.toLowerCase().includes('coffe morning') ? '\n(Coffe morning - Luca edit)' : ''}\n\n${hashtags}`, 'full')}
+                  onClick={() => copyToClipboard(`${caption}${selectedTrack?.toLowerCase().includes('coffe morning') ? '\n(Coffee morning - Luca edit)' : ''}\n\n${hashtags}`, 'full')}
                   className="flex items-center gap-1.5 text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg hover:bg-gray-800 transition-colors"
                 >
                   <Copy className="w-3.5 h-3.5" />
                   {copied === 'full' ? 'Copied!' : 'Copy all'}
                 </button>
               </div>
-              <p className="text-sm text-gray-700 whitespace-pre-line">{caption}{selectedTrack?.toLowerCase().includes('coffe morning') ? '\n(Coffe morning - Luca edit)' : ''}{'\n\n'}{hashtags}</p>
+              <p className="text-sm text-gray-700 whitespace-pre-line">{caption}{selectedTrack?.toLowerCase().includes('coffe morning') ? '\n(Coffee morning - Luca edit)' : ''}{'\n\n'}{hashtags}</p>
             </div>
           )}
         </div>
