@@ -5,6 +5,7 @@ import { StatsGrid } from '@/components/dashboard/StatsGrid'
 import { PostsTable } from '@/components/dashboard/PostsTable'
 import { ViewsChart } from '@/components/dashboard/ViewsChart'
 import { SubmitPostModal } from '@/components/dashboard/SubmitPostModal'
+import { WelcomeModal } from '@/components/dashboard/WelcomeModal'
 import { Plus } from 'lucide-react'
 import type { Post } from '@/types'
 
@@ -14,6 +15,7 @@ export function CreatorDashboard() {
   const [showSubmit, setShowSubmit] = useState(false)
   const [loading, setLoading] = useState(true)
   const [platformFilter, setPlatformFilter] = useState<string>('all')
+  const [showWelcome, setShowWelcome] = useState(() => !localStorage.getItem('luca_welcome_shown'))
 
   async function fetchData() {
     if (!user) return
@@ -109,6 +111,10 @@ export function CreatorDashboard() {
           onClose={() => setShowSubmit(false)}
           onSubmitted={fetchData}
         />
+      )}
+
+      {showWelcome && (
+        <WelcomeModal onClose={() => setShowWelcome(false)} />
       )}
     </div>
   )

@@ -8,6 +8,8 @@ import {
   LogOut,
   Music,
   Video,
+  BookOpen,
+  UserCircle,
   X,
 } from 'lucide-react'
 
@@ -15,6 +17,8 @@ const creatorLinks = [
   { to: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { to: '/dashboard/generate', label: 'Generate Post', icon: Video },
   { to: '/dashboard/submit', label: 'Submit Post', icon: Send },
+  { to: '/dashboard/profile', label: 'Generate Profile', icon: UserCircle },
+  { to: '/dashboard/guide', label: 'Guide', icon: BookOpen },
 ]
 
 const adminLinks = [

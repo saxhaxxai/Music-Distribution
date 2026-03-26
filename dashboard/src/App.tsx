@@ -9,6 +9,8 @@ import { CreatorsList } from '@/pages/admin/CreatorsList'
 import { GeneratePost } from '@/pages/GeneratePost'
 import { Signup } from '@/pages/Signup'
 import { SubmitPost } from '@/pages/SubmitPost'
+import { Guide } from '@/pages/Guide'
+import { GenerateProfile } from '@/pages/GenerateProfile'
 
 const queryClient = new QueryClient()
 
@@ -42,6 +44,8 @@ function AppRoutes() {
         <Route path="/dashboard" element={isAdmin ? <Navigate to="/admin" /> : <CreatorDashboard />} />
         <Route path="/dashboard/generate" element={<GeneratePost />} />
         <Route path="/dashboard/submit" element={<SubmitPost />} />
+        <Route path="/dashboard/profile" element={<GenerateProfile />} />
+        <Route path="/dashboard/guide" element={<Guide />} />
         <Route path="/admin" element={<AdminRoute><AdminOverview /></AdminRoute>} />
         <Route path="/admin/creators" element={<AdminRoute><CreatorsList /></AdminRoute>} />
         <Route path="/admin/generate" element={<AdminRoute><GeneratePost /></AdminRoute>} />
