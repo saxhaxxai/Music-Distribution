@@ -6,6 +6,7 @@ import { PostsTable } from '@/components/dashboard/PostsTable'
 import { ViewsChart } from '@/components/dashboard/ViewsChart'
 import { SubmitPostModal } from '@/components/dashboard/SubmitPostModal'
 import { WelcomeModal } from '@/components/dashboard/WelcomeModal'
+import { DailyProgress } from '@/components/dashboard/DailyProgress'
 import { Plus } from 'lucide-react'
 import type { Post } from '@/types'
 
@@ -91,6 +92,8 @@ export function CreatorDashboard() {
           </button>
         ))}
       </div>
+
+      <DailyProgress />
 
       <StatsGrid
         totalViews={totalViews}
