@@ -11,7 +11,7 @@ import { Plus } from 'lucide-react'
 import type { Post } from '@/types'
 
 export function CreatorDashboard() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [posts, setPosts] = useState<Post[]>([])
   const [showSubmit, setShowSubmit] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -51,6 +51,12 @@ export function CreatorDashboard() {
     return sum + (latest?.likes || 0)
   }, 0)
 
+  const totalBookmarks = filteredPosts.reduce((sum, post) => {
+    const latest = post.analytics
+      ?.sort((a, b) => new Date(b.fetched_at).getTime() - new Date(a.fetched_at).getTime())[0]
+    return sum + (latest?.bookmarks || 0)
+  }, 0)
+
   const avgEngagement = filteredPosts.reduce((sum, post) => {
     const latest = post.analytics
       ?.sort((a, b) => new Date(b.fetched_at).getTime() - new Date(a.fetched_at).getTime())[0]
@@ -63,13 +69,26 @@ export function CreatorDashboard() {
     return <div className="text-gray-400">Loading...</div>
   }
 
+  const greeting = () => {
+    const h = new Date().getHours()
+    if (h < 12) return 'Good morning'
+    if (h < 18) return 'Good afternoon'
+    return 'Good evening'
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+            {greeting()}{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}
+          </h1>
+          <p className="text-sm text-gray-400 mt-0.5">Here's how your content is performing.</p>
+        </div>
         <button
           onClick={() => setShowSubmit(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
+          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-pink-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity shadow-sm"
         >
           <Plus className="w-4 h-4" />
           Submit Post
@@ -77,15 +96,15 @@ export function CreatorDashboard() {
       </div>
 
       {/* Platform filter */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 bg-white rounded-xl p-1 border border-gray-100 w-fit">
         {['all', 'tiktok', 'instagram'].map((p) => (
           <button
             key={p}
             onClick={() => setPlatformFilter(p)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg text-xs font-medium transition-all ${
               platformFilter === p
-                ? 'bg-blue-600 text-white'
-                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                ? 'bg-gray-900 text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-900'
             }`}
           >
             {p === 'all' ? 'All Platforms' : p === 'tiktok' ? 'TikTok' : 'Instagram'}
@@ -98,6 +117,7 @@ export function CreatorDashboard() {
       <StatsGrid
         totalViews={totalViews}
         totalLikes={totalLikes}
+        totalBookmarks={totalBookmarks}
         totalPosts={filteredPosts.length}
         avgEngagement={avgEngagement}
       />
@@ -105,7 +125,7 @@ export function CreatorDashboard() {
       <ViewsChart data={chartData} />
 
       <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Your Posts</h2>
+        <h2 className="text-sm font-semibold text-gray-900 mb-3">Your Posts</h2>
         <PostsTable posts={filteredPosts} onRefreshed={fetchData} />
       </div>
 

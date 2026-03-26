@@ -89,6 +89,7 @@ export function PostsTable({ posts, onRefreshed }: Props) {
               <th className="px-4 py-3 font-medium sm:px-6">Status</th>
               <th className="px-4 py-3 font-medium sm:px-6">Views</th>
               <th className="px-4 py-3 font-medium sm:px-6">Likes</th>
+              <th className="px-4 py-3 font-medium sm:px-6">Saves</th>
               <th className="hidden sm:table-cell px-6 py-3 font-medium">Engagement</th>
               <th className="hidden sm:table-cell px-6 py-3 font-medium">Date</th>
               <th className="px-4 py-3 font-medium sm:px-6"></th>
@@ -130,6 +131,9 @@ export function PostsTable({ posts, onRefreshed }: Props) {
                   </td>
                   <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm">
                     {stats ? formatNumber(stats.likes) : '—'}
+                  </td>
+                  <td className="px-4 py-3 sm:px-6 sm:py-4 text-sm">
+                    {stats ? formatNumber(stats.bookmarks) : '—'}
                   </td>
                   <td className="hidden sm:table-cell px-6 py-4 text-sm">
                     {stats ? `${stats.engagement_rate.toFixed(1)}%` : '—'}

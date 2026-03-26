@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Download, Loader2, Play, RefreshCw, Sparkles, ChevronLeft, Music, Zap, Copy, Type } from 'lucide-react'
+import { Download, Loader2, Play, RefreshCw, Sparkles, ChevronLeft, Music, Zap, Copy, Type, X } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://music-distribution-production.up.railway.app'
 
@@ -76,6 +76,7 @@ export function GeneratePost() {
   const [hashtags, setHashtags] = useState<string | null>(null)
   const [captionLoading, setCaptionLoading] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
+  const [previewVideo, setPreviewVideo] = useState<string | null>(null)
 
   useEffect(() => {
     if (!subcategory) return
@@ -371,6 +372,44 @@ export function GeneratePost() {
             )}
           </div>
 
+          {/* Example videos carousel */}
+          {selectedTrack && (
+            <div className="pt-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Examples</h3>
+              <p className="text-xs text-gray-400 mb-3">Swipe to preview what your TikTok will look like.</p>
+              <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide snap-x snap-mandatory">
+                {[
+                  { src: '/examples/Italy_orange_example.mp4', label: 'Italy Orange' },
+                  { src: '/examples/Party_blackWhite_example.mp4', label: 'Black & White' },
+                  { src: '/examples/Party_night_example.mp4', label: 'Night Club' },
+                  { src: '/examples/Party_night_example_2.mp4', label: 'Night Club 2' },
+                  { src: '/examples/Party_VHS_Example.mp4', label: 'Party VHS' },
+                  { src: '/examples/LA_VHS_example.mp4', label: 'LA VHS' },
+                ].map((ex) => (
+                  <div key={ex.src} className="snap-start shrink-0 w-36">
+                    <div
+                      className="relative rounded-xl overflow-hidden bg-black aspect-[9/16] group cursor-pointer"
+                      onClick={() => setPreviewVideo(ex.src)}
+                    >
+                      <video
+                        src={ex.src}
+                        className="w-full h-full object-cover"
+                        muted
+                        playsInline
+                        loop
+                        onMouseEnter={(e) => (e.target as HTMLVideoElement).play()}
+                        onMouseLeave={(e) => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0 }}
+                        onTouchStart={(e) => (e.target as HTMLVideoElement).play()}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+                      <span className="absolute bottom-2 left-2 text-[11px] font-medium text-white">{ex.label}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {selectedTrack && (
             <div className="flex flex-col items-center pt-4">
               <button
@@ -497,6 +536,30 @@ export function GeneratePost() {
               <p className="text-sm text-gray-700 whitespace-pre-line">{caption}{selectedTrack?.toLowerCase().includes('coffe morning') ? '\n(Coffee morning - Luca edit)' : ''}{'\n\n'}{hashtags}</p>
             </div>
           )}
+        </div>
+      )}
+      {/* Video preview popup */}
+      {previewVideo && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+          onClick={() => setPreviewVideo(null)}
+        >
+          <div className="relative w-64 rounded-2xl overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setPreviewVideo(null)}
+              className="absolute top-2 right-2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <video
+              src={previewVideo}
+              className="w-full aspect-[9/16] object-contain bg-black"
+              autoPlay
+              loop
+              playsInline
+              controls
+            />
+          </div>
         </div>
       )}
     </div>
