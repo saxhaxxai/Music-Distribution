@@ -367,16 +367,20 @@ def get_video_duration(path: str) -> float:
         return 5.0
 
 
-def extract_video_clip(vid_path: str, dur: float, out_path: str):
+def extract_video_clip(vid_path: str, dur: float, out_path: str, crop_low: bool = False):
     """Extract a random clip of `dur` seconds from vid_path, scaled to WIDTH×HEIGHT."""
     vid_total = get_video_duration(vid_path)
     max_start = max(0, vid_total - dur - 0.3)
     start = random.uniform(0.1, max_start) if max_start > 0.1 else 0
+    if crop_low:
+        vf = f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,crop={WIDTH}:{HEIGHT}:(in_w-{WIDTH})/2:(in_h-{HEIGHT})*0.65"
+    else:
+        vf = f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,crop={WIDTH}:{HEIGHT}"
     subprocess.run([
         "ffmpeg", "-y",
         "-ss", str(start), "-t", str(dur),
         "-i", vid_path,
-        "-vf", f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,crop={WIDTH}:{HEIGHT}",
+        "-vf", vf,
         "-an", "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-r", "30",
         out_path,
     ], capture_output=True, timeout=15)
@@ -403,6 +407,7 @@ def generate_mixed_ffmpeg(
     analysis: dict,
     audio_path: str,
     output_path: str,
+    crop_low: bool = False,
 ):
     """
     Mixed photo+video TikTok — 3 video clips total, structured as:
@@ -546,11 +551,13 @@ def generate_mixed_ffmpeg(
             photo_to_clip(source, dur, out_clip)
         elif seg_type == 'video_at':
             _, source, dur, start = seg
+            crop_expr = (f"crop={WIDTH}:{HEIGHT}:(in_w-{WIDTH})/2:(in_h-{HEIGHT})*0.65" if crop_low
+                         else f"crop={WIDTH}:{HEIGHT}")
             subprocess.run([
                 "ffmpeg", "-y",
                 "-ss", str(start), "-t", str(dur),
                 "-i", source,
-                "-vf", f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,crop={WIDTH}:{HEIGHT}",
+                "-vf", f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,{crop_expr}",
                 "-an", "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-r", "30",
                 out_clip,
             ], capture_output=True, timeout=15)
@@ -670,6 +677,7 @@ def _generate_sync(category: str, color: str, track: str) -> str:
             analysis=analysis,
             audio_path=audio_path,
             output_path=output_file,
+            crop_low=(color == 'day_club'),
         )
     elif has_videos and not has_photos:
         # VHS / video-only mode: stitch video clips directly
