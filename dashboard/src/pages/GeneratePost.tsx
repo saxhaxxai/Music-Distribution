@@ -11,8 +11,24 @@ interface Track {
   drop_time: number
   clip_start: number
   clip_end: number
+  has_lyrics?: boolean
   error?: string
 }
+
+const FONT_STYLES = [
+  { value: 'chic', label: 'Chic', description: 'Didot, elegant serif' },
+  { value: 'modern', label: 'Modern', description: 'Avenir, clean sans-serif' },
+  { value: 'neutral', label: 'Neutral', description: 'Anton, bold condensed' },
+]
+
+const LYRICS_COLORS = [
+  { value: 'white', label: 'White', hex: '#FFFFFF' },
+  { value: 'yellow', label: 'Yellow', hex: '#FFD232' },
+  { value: 'green', label: 'Green', hex: '#50DC78' },
+  { value: 'pink', label: 'Pink', hex: '#FF69B4' },
+  { value: 'orange', label: 'Orange', hex: '#FFA032' },
+  { value: 'blue', label: 'Blue', hex: '#64B4FF' },
+]
 
 const CATEGORIES = [
   {
@@ -77,6 +93,9 @@ export function GeneratePost() {
   const [captionLoading, setCaptionLoading] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
   const [previewVideo, setPreviewVideo] = useState<string | null>(null)
+  const [lyricsEnabled, setLyricsEnabled] = useState(false)
+  const [lyricsFont, setLyricsFont] = useState('chic')
+  const [lyricsColor, setLyricsColor] = useState('white')
 
   useEffect(() => {
     if (!subcategory) return
@@ -105,7 +124,10 @@ export function GeneratePost() {
       const res = await fetch(`${API_URL}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, color: subcategory, track: selectedTrack }),
+        body: JSON.stringify({
+          category, color: subcategory, track: selectedTrack,
+          lyrics: lyricsEnabled, lyrics_font: lyricsFont, lyrics_color: lyricsColor,
+        }),
         signal: controller.signal,
       })
       clearTimeout(timeout)
@@ -325,42 +347,100 @@ export function GeneratePost() {
             ) : (
               <div className="space-y-2">
                 {tracks.map((track) => (
-                  <button
-                    key={track.filename}
-                    onClick={() => setSelectedTrack(track.filename)}
-                    className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
-                      selectedTrack === track.filename
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
-                  >
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      selectedTrack === track.filename ? 'bg-blue-600' : 'bg-gray-100'
-                    }`}>
-                      <Music className={`w-5 h-5 ${selectedTrack === track.filename ? 'text-white' : 'text-gray-400'}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-gray-900 truncate">{track.name}</div>
-                      <div className="text-xs text-gray-500">{formatTime(track.duration)}</div>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-gray-400">
-                      <div className="text-center hidden sm:block">
-                        <div className="font-bold text-gray-700">{track.tempo}</div>
-                        <div>BPM</div>
+                  <div key={track.filename}>
+                    <button
+                      onClick={() => setSelectedTrack(track.filename)}
+                      className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
+                        selectedTrack === track.filename
+                          ? 'border-blue-500 bg-blue-50 rounded-b-none'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                        selectedTrack === track.filename ? 'bg-blue-600' : 'bg-gray-100'
+                      }`}>
+                        <Music className={`w-5 h-5 ${selectedTrack === track.filename ? 'text-white' : 'text-gray-400'}`} />
                       </div>
-                      <div className="text-center">
-                        <div className="font-bold text-gray-700 flex items-center gap-1">
-                          <Zap className="w-3 h-3 text-amber-500" />
-                          {formatTime(track.drop_time)}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-gray-900 truncate">{track.name}</div>
+                        <div className="text-xs text-gray-500">{formatTime(track.duration)}</div>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-gray-400">
+                        <div className="text-center hidden sm:block">
+                          <div className="font-bold text-gray-700">{track.tempo}</div>
+                          <div>BPM</div>
                         </div>
-                        <div>Drop</div>
+                        <div className="text-center">
+                          <div className="font-bold text-gray-700 flex items-center gap-1">
+                            <Zap className="w-3 h-3 text-amber-500" />
+                            {formatTime(track.drop_time)}
+                          </div>
+                          <div>Drop</div>
+                        </div>
+                        <div className="text-center hidden sm:block">
+                          <div className="font-bold text-gray-700">{formatTime(track.clip_start)}-{formatTime(track.clip_end)}</div>
+                          <div>Clip</div>
+                        </div>
                       </div>
-                      <div className="text-center hidden sm:block">
-                        <div className="font-bold text-gray-700">{formatTime(track.clip_start)}-{formatTime(track.clip_end)}</div>
-                        <div>Clip</div>
+                    </button>
+
+                    {/* Lyrics options inline under selected track */}
+                    {selectedTrack === track.filename && track.has_lyrics && (
+                      <div className="border-2 border-t-0 border-blue-500 bg-blue-50 rounded-b-xl px-5 py-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Type className="w-4 h-4 text-violet-500" />
+                            <span className="text-sm font-semibold text-gray-900">Lyrics</span>
+                          </div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setLyricsEnabled(!lyricsEnabled) }}
+                            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${lyricsEnabled ? 'bg-blue-600' : 'bg-gray-300'}`}
+                          >
+                            <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${lyricsEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                          </button>
+                        </div>
+
+                        {lyricsEnabled && (
+                          <div className="space-y-4 mt-4">
+                            <div>
+                              <span className="text-xs font-medium text-gray-500 mb-2 block">Font style</span>
+                              <div className="flex gap-2">
+                                {FONT_STYLES.map(f => (
+                                  <button
+                                    key={f.value}
+                                    onClick={(e) => { e.stopPropagation(); setLyricsFont(f.value) }}
+                                    className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-medium transition-all ${
+                                      lyricsFont === f.value
+                                        ? 'bg-gray-900 text-white'
+                                        : 'bg-white text-gray-600 hover:bg-gray-100'
+                                    }`}
+                                  >
+                                    {f.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <span className="text-xs font-medium text-gray-500 mb-2 block">Text color</span>
+                              <div className="flex gap-3">
+                                {LYRICS_COLORS.map(c => (
+                                  <button
+                                    key={c.value}
+                                    onClick={(e) => { e.stopPropagation(); setLyricsColor(c.value) }}
+                                    className={`w-9 h-9 rounded-full transition-all ${
+                                      lyricsColor === c.value ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : 'hover:scale-105'
+                                    }`}
+                                    style={{ backgroundColor: c.hex, border: c.value === 'white' ? '2px solid #e5e7eb' : 'none' }}
+                                    title={c.label}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  </button>
+                    )}
+                  </div>
                 ))}
 
                 {tracks.length === 0 && (
@@ -480,47 +560,49 @@ export function GeneratePost() {
             </button>
           </div>
 
-          {/* T-O-S */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                <Type className="w-4 h-4 text-violet-500" />
-                T-O-S
+          {/* T-O-S (hidden when lyrics enabled) */}
+          {!lyricsEnabled && (
+            <div className="bg-white rounded-2xl border border-gray-200 p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                  <Type className="w-4 h-4 text-violet-500" />
+                  T-O-S
+                </div>
+                {caption && (
+                  <button
+                    onClick={() => copyToClipboard(caption, 'caption')}
+                    className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    {copied === 'caption' ? 'Copied!' : 'Copy'}
+                  </button>
+                )}
               </div>
-              {caption && (
-                <button
-                  onClick={() => copyToClipboard(caption, 'caption')}
-                  className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  {copied === 'caption' ? 'Copied!' : 'Copy'}
+              {captionLoading ? (
+                <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating...
+                </div>
+              ) : caption ? (
+                <div>
+                  <p className="text-lg font-semibold text-gray-900 whitespace-pre-line">{caption}</p>
+                  <button
+                    onClick={generateCaption}
+                    className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 mt-3 transition-colors"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    Regenerate
+                  </button>
+                </div>
+              ) : (
+                <button onClick={generateCaption} className="text-sm text-blue-600 hover:text-blue-700">
+                  Generate
                 </button>
               )}
             </div>
-            {captionLoading ? (
-              <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Generating...
-              </div>
-            ) : caption ? (
-              <div>
-                <p className="text-lg font-semibold text-gray-900 whitespace-pre-line">{caption}</p>
-                <button
-                  onClick={generateCaption}
-                  className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 mt-3 transition-colors"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  Regenerate
-                </button>
-              </div>
-            ) : (
-              <button onClick={generateCaption} className="text-sm text-blue-600 hover:text-blue-700">
-                Generate
-              </button>
-            )}
-          </div>
+          )}
 
-          {/* Ready to paste */}
+          {/* Ready to paste (always visible) */}
           {caption && hashtags && (
             <div className="bg-gray-50 rounded-2xl border border-gray-200 p-5">
               <div className="flex items-center justify-between mb-3">

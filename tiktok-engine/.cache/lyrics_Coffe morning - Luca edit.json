@@ -1,0 +1,21 @@
+{
+  "track": "Coffe morning - Luca edit.m4a",
+  "words": [
+    {"word": "Ti vedo", "start": 0.47, "end": 1.37, "size": "large", "pos": "center", "font_style": "anton"},
+    {"word": "Ferma", "start": 2.07, "end": 2.33, "size": "large", "pos": "center"},
+    {"word": "Al", "start": 2.37, "end": 2.53, "size": "large", "pos": "center"},
+    {"word": "Balcone", "start": 2.53, "end": 3.43, "size": "large", "pos": "center"},
+    {"word": "Labbra", "start": 4.00, "end": 5.23, "size": "medium", "pos": "left"},
+    {"word": "Che", "start": 4.53, "end": 4.87, "size": "large", "pos": "center"},
+    {"word": "Brillano", "start": 4.80, "end": 5.37, "size": "medium", "pos": "right_of_center"},
+    {"word": "Fingi", "start": 5.80, "end": 6.10, "size": "large", "pos": "center"},
+    {"word": "Di niente", "start": 6.37, "end": 7.53, "size": "large", "pos": "center"},
+    {"word": "Ma", "start": 7.33, "end": 9.00, "size": "medium", "pos": "left"},
+    {"word": "Il piede", "start": 8.07, "end": 8.67, "size": "medium", "pos": "center_left_high"},
+    {"word": "BATTE", "start": 8.53, "end": 9.03, "size": "large", "pos": "right"},
+    {"word": "BATTE", "start": 9.40, "end": 9.73, "size": "large", "pos": "center"},
+    {"word": "BATTE", "start": 10.40, "end": 10.87, "size": "large", "pos": "center"},
+    {"word": "BATTE", "start": 10.73, "end": 11.17, "size": "large", "pos": "center"},
+    {"word": "BATTE", "start": 11.40, "end": 11.87, "size": "large", "pos": "center"}
+  ]
+}

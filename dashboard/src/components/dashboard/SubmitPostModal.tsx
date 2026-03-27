@@ -53,6 +53,7 @@ export function SubmitPostModal({ onClose, onSubmitted }: Props) {
   const [newHandle, setNewHandle] = useState('')
   const [newPlatform, setNewPlatform] = useState<'tiktok' | 'instagram'>('tiktok')
   const [showAddAccount, setShowAddAccount] = useState(false)
+  const [hasLyrics, setHasLyrics] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -127,7 +128,7 @@ export function SubmitPostModal({ onClose, onSubmitted }: Props) {
       account_id: selectedAccount,
       submitted_by: user?.id,
       status: 'pending',
-      content_type: contentType,
+      content_type: hasLyrics ? `${contentType}_lyrics` : contentType,
       published_at: new Date().toISOString(),
     })
 
@@ -240,6 +241,18 @@ export function SubmitPostModal({ onClose, onSubmitted }: Props) {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Lyrics toggle */}
+          <div className="flex items-center justify-between py-2">
+            <span className="text-sm font-medium text-gray-700">With Lyrics</span>
+            <button
+              type="button"
+              onClick={() => setHasLyrics(!hasLyrics)}
+              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${hasLyrics ? 'bg-blue-600' : 'bg-gray-300'}`}
+            >
+              <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${hasLyrics ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
           </div>
 
           {/* Post URL */}

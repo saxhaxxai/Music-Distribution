@@ -146,6 +146,9 @@ class GenerateRequest(BaseModel):
     category: str
     color: str
     track: str = "Wake up vFINAL.wav"
+    lyrics: bool = False
+    lyrics_font: str = "chic"      # chic, modern, neutral
+    lyrics_color: str = "white"    # white, yellow, green, pink, orange, blue
 
 
 class CaptionRequest(BaseModel):
@@ -401,6 +404,155 @@ def photo_to_clip(img_path: str, dur: float, out_path: str):
         os.remove(tmp_img)
 
 
+def _burn_lyrics(video_path: str, words: list[dict], output_path: str, text_color: str = "white"):
+    """Burn lyrics by rendering text frames with Pillow, encoding as overlay video, then compositing."""
+    from PIL import ImageFont, ImageDraw
+    import shutil
+    tmpdir = tempfile.mkdtemp()
+
+    COLOR_MAP = {
+        "white": (255, 255, 255, 255),
+        "yellow": (255, 210, 50, 255),
+        "green": (80, 220, 120, 255),
+        "pink": (255, 105, 180, 255),
+        "orange": (255, 160, 50, 255),
+        "blue": (100, 180, 255, 255),
+    }
+    fill_color = COLOR_MAP.get(text_color, COLOR_MAP["white"])
+
+    dur = get_video_duration(video_path)
+    fps = 30
+    total_frames = int(dur * fps)
+
+    # Load fonts — style from word config or default
+    FONT_STYLES = {
+        "chic": [
+            ("/System/Library/Fonts/Supplemental/Didot.ttc", 1),
+            ("/System/Library/Fonts/Supplemental/Bodoni 72.ttc", 1),
+        ],
+        "modern": [
+            ("/System/Library/Fonts/Avenir Next.ttc", 9),  # Heavy
+            ("/System/Library/Fonts/Supplemental/Futura.ttc", 0),
+        ],
+        "anton": [
+            ("/Users/sachakhiroun/Library/Fonts/Anton-Regular.ttf", 0),
+        ],
+    }
+
+    def _load_font(size, style="chic"):
+        for fpath, idx in FONT_STYLES.get(style, FONT_STYLES["chic"]):
+            try:
+                return ImageFont.truetype(fpath, size, index=idx)
+            except Exception:
+                try:
+                    return ImageFont.truetype(fpath, size)
+                except Exception:
+                    continue
+        return ImageFont.load_default()
+
+    # Determine style from first word or default
+    font_style = words[0].get("font_style", "chic") if words else "chic"
+
+    font_large = _load_font(100, font_style)
+    font_medium = _load_font(65, font_style)
+
+    # Pre-compute position and font for each word entry (by index)
+    _word_layout = {}  # index -> (x, y, font)
+    for idx, w in enumerate(words):
+        size = w.get("size", "large")
+        pos = w.get("pos", "center")
+        f = font_large if size == "large" else font_medium
+
+        # Measure text
+        tmp_img = Image.new("RGBA", (1, 1))
+        tmp_draw = ImageDraw.Draw(tmp_img)
+        bbox = tmp_draw.textbbox((0, 0), w["word"], font=f)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+        if pos == "center":
+            px = (WIDTH - tw) // 2
+            py = (HEIGHT - th) // 2
+        elif pos == "left":
+            px = 60
+            py = (HEIGHT - th) // 2
+        elif pos == "right":
+            px = WIDTH - tw - 60
+            py = (HEIGHT - th) // 2
+        elif pos == "right_of_center":
+            px = WIDTH // 2 + 160
+            py = (HEIGHT - th) // 2
+        elif pos == "center_left_high":
+            px = WIDTH // 4
+            py = (HEIGHT - th) // 2 - 80
+        else:
+            px = (WIDTH - tw) // 2
+            py = (HEIGHT - th) // 2
+
+        px = max(10, min(px, WIDTH - tw - 10))
+        py = max(10, min(py, HEIGHT - th - 10))
+        _word_layout[idx] = (px, py, f)
+
+    # Generate one PNG per frame
+    frames_dir = os.path.join(tmpdir, "frames")
+    os.makedirs(frames_dir)
+
+    for frame_idx in range(total_frames):
+        t = frame_idx / fps
+        # Find ALL active word indices at time t
+        active_indices = []
+        for idx, w in enumerate(words):
+            if w["start"] <= t < w["end"]:
+                active_indices.append(idx)
+
+        out_frame = os.path.join(frames_dir, f"frame_{frame_idx:05d}.png")
+        if active_indices:
+            img = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+
+            for idx in active_indices:
+                x, y, f = _word_layout[idx]
+                word_text = words[idx]["word"]
+
+                # Drop shadow
+                draw.text((x + 3, y + 3), word_text, fill=(0, 0, 0, 100), font=f)
+                # Text
+                draw.text((x, y), word_text, fill=fill_color, font=f)
+
+            img.save(out_frame)
+        else:
+            # Transparent frame
+            img = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+            img.save(out_frame)
+
+    # Encode overlay frames as a video with alpha
+    overlay_vid = os.path.join(tmpdir, "overlay.mov")
+    subprocess.run([
+        "ffmpeg", "-y",
+        "-framerate", str(fps),
+        "-i", os.path.join(frames_dir, "frame_%05d.png"),
+        "-c:v", "png", "-pix_fmt", "rgba",
+        overlay_vid,
+    ], capture_output=True, timeout=60)
+
+    # Composite overlay onto video
+    result = subprocess.run([
+        "ffmpeg", "-y",
+        "-i", video_path,
+        "-i", overlay_vid,
+        "-filter_complex", "[0:v][1:v]overlay=0:0:shortest=1",
+        "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p",
+        "-c:a", "copy",
+        "-movflags", "+faststart",
+        output_path,
+    ], capture_output=True, timeout=120)
+
+    shutil.rmtree(tmpdir)
+
+    if result.returncode != 0 or not os.path.exists(output_path) or os.path.getsize(output_path) < 1000:
+        # Fallback: copy without lyrics
+        shutil.copy2(video_path, output_path)
+
+
 def generate_mixed_ffmpeg(
     image_paths: list[str],
     video_dir: str,
@@ -408,6 +560,9 @@ def generate_mixed_ffmpeg(
     audio_path: str,
     output_path: str,
     crop_low: bool = False,
+    enable_lyrics: bool = True,
+    lyrics_font: str = "chic",
+    lyrics_color: str = "white",
 ):
     """
     Mixed photo+video TikTok — 3 video clips total, structured as:
@@ -580,15 +735,43 @@ def generate_mixed_ffmpeg(
         "-c", "copy", merged,
     ], capture_output=True, timeout=120)
 
-    # ── Add audio ─────────────────────────────────────────────────
+    # ── Load lyrics if available and enabled ─────────────────────────
+    lyrics_words = []
+    if enable_lyrics:
+        track_name = os.path.splitext(os.path.basename(audio_path))[0]
+        lyrics_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cache", f"lyrics_{track_name}.json")
+        if os.path.exists(lyrics_path):
+            import json as _json
+            with open(lyrics_path) as lf:
+                lyrics_data = _json.load(lf)
+            for w in lyrics_data.get("words", []):
+                t_start = w["start"]
+                t_end = w["end"]
+                if t_start >= 0 and t_start < clip_dur:
+                    entry = {"word": w["word"], "start": t_start, "end": min(t_end, clip_dur)}
+                    if "size" in w:
+                        entry["size"] = w["size"]
+                    if "pos" in w:
+                        entry["pos"] = w["pos"]
+                    entry["font_style"] = lyrics_font
+                    lyrics_words.append(entry)
+
+    # ── Add audio ────────────────────────────────────────────────
+    with_audio = os.path.join(tmpdir, "with_audio.mp4")
     subprocess.run([
         "ffmpeg", "-y",
         "-i", merged,
         "-ss", str(clip_start), "-t", str(clip_dur), "-i", audio_path,
         "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
         "-shortest", "-movflags", "+faststart",
-        output_path,
+        with_audio,
     ], capture_output=True, timeout=30)
+
+    # ── Burn lyrics onto video using Pillow frame-by-frame ───────
+    if lyrics_words and os.path.exists(with_audio):
+        _burn_lyrics(with_audio, lyrics_words, output_path, text_color=lyrics_color)
+    else:
+        shutil.move(with_audio, output_path)
 
     shutil.rmtree(tmpdir)
 
@@ -610,6 +793,7 @@ async def list_tracks():
         name = os.path.splitext(filename)[0]
         try:
             analysis = analyze_track(t)
+            lyrics_path = os.path.join(CACHE_DIR, f"lyrics_{name}.json")
             result.append({
                 "filename": filename,
                 "name": name,
@@ -618,6 +802,7 @@ async def list_tracks():
                 "drop_time": round(analysis["drop_time"], 1),
                 "clip_start": round(analysis["clip_start"], 1),
                 "clip_end": round(analysis["clip_end"], 1),
+                "has_lyrics": os.path.exists(lyrics_path),
             })
         except Exception as e:
             result.append({"filename": filename, "name": name, "error": str(e)})
@@ -645,7 +830,9 @@ async def list_categories():
     return result
 
 
-def _generate_sync(category: str, color: str, track: str) -> str:
+def _generate_sync(category: str, color: str, track: str,
+                    lyrics: bool = False, lyrics_font: str = "chic",
+                    lyrics_color: str = "white") -> str:
     """Synchronous generation — runs in thread pool to not block the event loop."""
     audio_path = os.path.join(ASSETS_DIR, track)
     if not os.path.isfile(audio_path):
@@ -678,6 +865,9 @@ def _generate_sync(category: str, color: str, track: str) -> str:
             audio_path=audio_path,
             output_path=output_file,
             crop_low=(color == 'day_club'),
+            enable_lyrics=lyrics,
+            lyrics_font=lyrics_font,
+            lyrics_color=lyrics_color,
         )
     elif has_videos and not has_photos:
         # VHS / video-only mode: stitch video clips directly
@@ -687,6 +877,9 @@ def _generate_sync(category: str, color: str, track: str) -> str:
             analysis=analysis,
             audio_path=audio_path,
             output_path=output_file,
+            enable_lyrics=lyrics,
+            lyrics_font=lyrics_font,
+            lyrics_color=lyrics_color,
         )
     else:
         # Photo-only slideshow (categories without video/ subfolder)
@@ -715,7 +908,8 @@ async def generate_tiktok(req: GenerateRequest):
     import asyncio
     loop = asyncio.get_event_loop()
     output_file = await loop.run_in_executor(
-        None, _generate_sync, req.category, req.color, req.track
+        None, _generate_sync, req.category, req.color, req.track,
+        req.lyrics, req.lyrics_font, req.lyrics_color
     )
     return FileResponse(
         output_file,
